@@ -1,7 +1,12 @@
 /**
  * DjibSHOP - Supabase Cloud Database Client & Persistence
- * Permet la synchronisation temps réel sur tous les appareils (PC, Mobile, Tablettes)
+ * Synchronisation temps réel sur tous les appareils (PC, Mobile, Tablettes)
  */
+
+const DEFAULT_SUPABASE_CONFIG = {
+  url: "https://wnvwobizlhnlggtlnujv.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudndvYml6bGhubGdndGxudWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0ODUzNjYsImV4cCI6MjEwOTA2MTM2Nn0.ZDVZqD8is5IadOLTU4WNpoHU9Yz-FLIWATdcsGWd0RU"
+};
 
 const SUPABASE_CONFIG_KEY = "djibshop_supabase_config_v2";
 
@@ -13,16 +18,23 @@ class SupabaseService {
   }
 
   init() {
+    let config = null;
     const saved = localStorage.getItem(SUPABASE_CONFIG_KEY);
     if (saved) {
       try {
-        const config = JSON.parse(saved);
-        if (config.url && config.anonKey) {
-          this.configure(config.url, config.anonKey);
-        }
+        config = JSON.parse(saved);
       } catch (e) {
         console.error("Erreur config Supabase", e);
       }
+    }
+
+    // Utiliser la configuration par défaut officielle
+    if (!config || !config.url || !config.anonKey) {
+      config = DEFAULT_SUPABASE_CONFIG;
+    }
+
+    if (config && config.url && config.anonKey) {
+      this.configure(config.url, config.anonKey);
     }
   }
 
@@ -43,7 +55,10 @@ class SupabaseService {
 
   getConfig() {
     const saved = localStorage.getItem(SUPABASE_CONFIG_KEY);
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return DEFAULT_SUPABASE_CONFIG;
   }
 
   clearConfig() {
