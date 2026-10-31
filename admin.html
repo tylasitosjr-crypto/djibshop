@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>DjibSHOP | Espace Administrateur Privé</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0B4FBA">
+
+  <!-- Feuilles de Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230B4FBA'%3E%3Crect width='18' height='11' x='3' y='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
+  <style>
+    /* Styles spécifiques au portail Admin autonome */
+    .admin-standalone-wrapper {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--slate-100);
+    }
+    .admin-login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, var(--blue-950) 0%, var(--blue-900) 50%, var(--blue-800) 100%);
+    }
+    .admin-login-card-standalone {
+      background: var(--white);
+      width: 100%;
+      max-width: 440px;
+      border-radius: var(--radius-xl);
+      padding: 2.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+      text-align: center;
+    }
+    .password-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .password-input-wrapper input {
+      width: 100%;
+      padding-right: 44px;
+    }
+    .toggle-password-visibility-btn {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--slate-400);
+      cursor: pointer;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color var(--transition-fast);
+    }
+    .toggle-password-visibility-btn:hover {
+      color: var(--blue-700);
+    }
+  </style>
+</head>
+<body class="admin-standalone-wrapper">
+
+  <!-- =======================================================================
+       1. ÉCRAN DE CONNEXION SÉCURISÉ (AVEC OPTION ŒIL / AFFICHER MOT DE PASSE)
+       ======================================================================= -->
+  <div id="admin-login-view" class="admin-login-screen">
+    <div class="admin-login-card-standalone">
+      <div class="admin-lock-icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+
+      <div style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--blue-900); margin-bottom: 0.35rem;">
+        Djib<span>SHOP</span> Admin
+      </div>
+      <p style="font-size: 0.85rem; color: var(--slate-500); margin-bottom: 1.75rem;">
+        Espace de gestion autonome du catalogue, des tailles et des stocks.
+      </p>
+
+      <div class="form-group" style="text-align: left; margin-bottom: 1.25rem;">
+        <label for="admin-pass-input" class="form-label">Mot de passe de gestion :</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="admin-pass-input" class="form-input" placeholder="Entrez votre mot de passe..." autocomplete="current-password">
+          <button type="button" class="toggle-password-visibility-btn" id="btn-toggle-eye" aria-label="Afficher ou masquer le mot de passe" title="Afficher/Masquer">
+            <!-- Icône Œil fermée / ouverte -->
+            <svg id="eye-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div id="admin-pass-error" style="display: none; color: var(--danger-crimson); font-size: 0.775rem; margin-top: 6px; font-weight: 700;">
+          Mot de passe incorrect. Veuillez vérifier ce que vous avez tapé avec l'icône œil.
+        </div>
+      </div>
+
+      <button type="button" id="btn-admin-login-submit" class="whatsapp-direct-btn" style="background: var(--blue-700); color: white; width: 100%; justify-content: center; font-size: 1rem; padding: 0.85rem;">
+        Accéder au Panneau d'Administration
+      </button>
+
+      <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--slate-200); font-size: 0.8rem; color: var(--slate-400);">
+        <a href="index.html" style="color: var(--blue-600); font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Retourner sur la boutique client
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       2. TABLEAU DE BORD ADMINISTRATEUR COMPLET (UNE FOIS CONNECTÉ)
+       ======================================================================= -->
+  <div id="admin-portal-view" style="display: none;">
+    <!-- En-tête de navigation Admin -->
+    <header style="background: var(--white); border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow-xs);">
+      <div class="container" style="display: flex; align-items: center; justify-content: space-between; height: 70px; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.85rem;">
+          <div class="brand-logo-mark" style="width: 38px; height: 38px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div>
+            <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: var(--blue-900); line-height: 1;">
+              Djib<span>SHOP</span> <span style="font-size: 0.8rem; background: var(--blue-50); color: var(--blue-700); padding: 2px 6px; border-radius: 4px; font-weight: 700;">Admin</span>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--slate-400); font-weight: 600; text-transform: uppercase; margin-top: 2px;">
+              Panneau de Manipulation Directe
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <a href="index.html" target="_blank" class="action-btn action-btn-secondary" title="Voir la boutique telle que vue par les clients">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span style="font-size: 0.825rem;">Voir la Boutique Client</span>
+          </a>
+          <button type="button" class="admin-exit-btn" id="btn-admin-logout" title="Déconnexion">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            <span style="font-size: 0.825rem;">Déconnexion</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container" style="padding-top: 2rem; padding-bottom: 3.5rem;">
+      <!-- Bandeau de Navigation des Onglets -->
+      <div class="admin-header-strip">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span class="admin-badge-role">Gestionnaire</span>
+          <h1 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900);">Gestion du Magasin</h1>
+        </div>
+
+        <div class="admin-nav-tabs">
+          <button type="button" class="admin-tab-btn active" data-tab="catalog">Catalogue Produits</button>
+          <button type="button" class="admin-tab-btn" data-tab="add">Nouveau Produit</button>
+          <button type="button" class="admin-tab-btn" data-tab="orders">Commandes WhatsApp</button>
+          <button type="button" class="admin-tab-btn" data-tab="settings">Sauvegarde & Données</button>
+        </div>
+      </div>
+
+      <!-- Statistiques Globales -->
+      <div class="admin-stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon-wrapper stat-icon-blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
+          </div>
+          <div>
+            <div class="stat-label">Total Articles</div>
+            <div class="stat-value" id="stat-total-products">0</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrapper stat-icon-emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div>
+            <div class="stat-label">Valeur du Stock (FDJ)</div>
+            <div class="stat-value" id="stat-stock-value">0 FDJ</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrapper stat-icon-crimson">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+          </div>
+          <div>
+            <div class="stat-label">Ruptures de Stock</div>
+            <div class="stat-value" id="stat-out-of-stock">0</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrapper stat-icon-amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div>
+            <div class="stat-label">Commandes Reçues</div>
+            <div class="stat-value" id="stat-total-orders">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ONGLET 1 : CATALOGUE COMPLET ================= -->
+      <div id="admin-panel-catalog" class="admin-panel-card">
+        <div class="panel-card-header">
+          <div>
+            <h2 class="panel-title">Inventaire des Articles</h2>
+            <p class="panel-subtitle">Visualisez, modifiez les tailles, stocks et supprimez des articles.</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <input type="text" id="admin-search-products" class="form-input" placeholder="Filtrer un article..." style="width: 220px;">
+            <select id="admin-category-filter" class="form-select">
+              <option value="all">Toutes catégories</option>
+              <option value="vetements">Vêtements</option>
+              <option value="chaussures">Chaussures</option>
+              <option value="accessoires">Accessoires</option>
+              <option value="autres">Autres</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="admin-table-container">
+          <table class="admin-data-table">
+            <thead>
+              <tr>
+                <th>Aperçu Studio</th>
+                <th>Désignation & Réf</th>
+                <th>Catégorie</th>
+                <th>Prix (FDJ)</th>
+                <th>Disponibilité & Tailles</th>
+                <th>Badge</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-products-table-body">
+              <!-- Rendu dynamique -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= ONGLET 2 : AJOUTER / MODIFIER PRODUIT ================= -->
+      <div id="admin-panel-add" class="admin-panel-card" style="display: none;">
+        <div class="panel-card-header">
+          <div>
+            <h2 class="panel-title" id="admin-form-heading">Ajouter un nouveau produit</h2>
+            <p class="panel-subtitle">Choisissez le type de produit pour générer les champs de tailles adaptés.</p>
+          </div>
+          <button type="button" class="action-btn action-btn-secondary" id="admin-cancel-edit-btn" style="display: none;">
+            Annuler la modification
+          </button>
+        </div>
+
+        <form id="admin-product-form">
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="prod-title" class="form-label">Titre / Nom de l'Article *</label>
+              <input type="text" id="prod-title" class="form-input" placeholder="Ex: Chemise Lin Blanche Coupe Slim" required>
+            </div>
+
+            <!-- QUESTION DE CATÉGORIE DEMANDÉE PAR L'UTILISATEUR -->
+            <div class="form-group">
+              <label for="prod-category-select" class="form-label">Quel type de produit ajoutez-vous ? *</label>
+              <select id="prod-category-select" class="form-select" required>
+                <option value="vetements">Vêtements (Options S, M, L, XL, XXL, XXXL, XXXXL)</option>
+                <option value="chaussures">Chaussures (Pointures 38, 39, 40, 41, 42, 43, 44, 45)</option>
+                <option value="accessoires">Accessoires (Stock limite)</option>
+                <option value="autres">Autres Produits (Stock limite)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="prod-badge" class="form-label">Badge de mise en valeur</label>
+              <select id="prod-badge" class="form-select">
+                <option value="Aucun">Aucun badge</option>
+                <option value="Nouveau">Nouveau</option>
+                <option value="Promo">Promo</option>
+                <option value="Bestseller">Bestseller</option>
+                <option value="Tendance">Tendance</option>
+                <option value="Luxe">Luxe</option>
+                <option value="Exclusif">Exclusif</option>
+                <option value="Essentiel">Essentiel</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="prod-price" class="form-label">Prix de Vente en Franc Djiboutien (FDJ) *</label>
+              <input type="number" id="prod-price" class="form-input" placeholder="Ex: 4500" min="50" step="50" required>
+            </div>
+            <div class="form-group">
+              <label for="prod-original-price" class="form-label">Ancien Prix / Promotion (Optionnel)</label>
+              <input type="number" id="prod-original-price" class="form-input" placeholder="Ex: 6000" min="50" step="50">
+            </div>
+          </div>
+
+          <!-- GRILLE DYNAMIQUE DES TAILLES (SHEIN & ALIBABA STYLE) -->
+          <div id="dynamic-variant-fields">
+            <!-- Injecté en direct par js/admin.js -->
+          </div>
+
+          <!-- GESTION DES PHOTOS AVEC CADRE STUDIO BLANC PUR -->
+          <div style="background: var(--slate-50); border: 1.5px solid var(--slate-200); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+              <label class="form-label" style="margin-bottom: 0;">Photos du Produit (Finition Studio Fond Blanc Pur Épuré)</label>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.775rem; color: var(--slate-500);">Finition Fond :</span>
+                <select id="prod-bg-style" class="form-select" style="padding: 2px 8px; font-size: 0.775rem;">
+                  <option value="studio-white" selected>Fond Blanc Pur 100%</option>
+                  <option value="studio-gray">Fond Doux Gris Studio</option>
+                  <option value="studio-blue">Fond Doux Bleu DjibSHOP</option>
+                </select>
+              </div>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--slate-500); margin-bottom: 1rem;">
+              Les photos apparaissent automatiquement isolées et centrées avec un fond blanc impeccable comme sur Shein et Alibaba.
+            </p>
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <div style="flex: 1; min-width: 260px; display: flex; gap: 0.5rem;">
+                <input type="url" id="prod-img-url" class="form-input" placeholder="Coller une URL directe (https://...)">
+                <button type="button" class="action-btn action-btn-secondary" id="btn-add-img-url" style="white-space: nowrap;">Ajouter URL</button>
+              </div>
+              <div style="display: flex; align-items: center;">
+                <label for="prod-img-file" class="action-btn action-btn-secondary" style="cursor: pointer;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                  Téléverser une photo
+                </label>
+                <input type="file" id="prod-img-file" accept="image/*" multiple style="display: none;">
+              </div>
+            </div>
+
+            <!-- Liste des vignettes d'aperçu studio -->
+            <div id="admin-images-preview-list" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <!-- Aperçus injectés par js/admin.js -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prod-desc" class="form-label">Description Détaillée de l'Article</label>
+            <textarea id="prod-desc" class="form-textarea" rows="3" placeholder="Matière, coupe, entretien, spécificités pour Djibouti..."></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="submit" class="action-btn action-btn-cart" id="admin-form-submit-btn" style="padding: 0.85rem 1.75rem; font-size: 0.95rem;">
+              Enregistrer et mettre en ligne
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ================= ONGLET 3 : COMMANDES WHATSAPP ================= -->
+      <div id="admin-panel-orders" class="admin-panel-card" style="display: none;">
+        <div class="panel-card-header">
+          <div>
+            <h2 class="panel-title">Commandes Reçues sur WhatsApp</h2>
+            <p class="panel-subtitle">Journal des commandes passées vers le numéro +253 77078793.</p>
+          </div>
+        </div>
+
+        <div class="admin-table-container">
+          <table class="admin-data-table">
+            <thead>
+              <tr>
+                <th>Réf Commande</th>
+                <th>Date & Heure</th>
+                <th>Client & Quartier</th>
+                <th>Articles & Tailles</th>
+                <th>Total (FDJ)</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody id="admin-orders-table-body">
+              <!-- Rendu des commandes -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= ONGLET 4 : SAUVEGARDE & PARAMÈTRES ================= -->
+      <div id="admin-panel-settings" class="admin-panel-card" style="display: none;">
+        <div class="panel-card-header">
+          <div>
+            <h2 class="panel-title">Paramètres de la Boutique</h2>
+            <p class="panel-subtitle">Coordonnées et options de sauvegarde du catalogue.</p>
+          </div>
+        </div>
+
+        <div style="max-width: 600px; display: flex; flex-direction: column; gap: 1.5rem;">
+          <div class="form-group">
+            <label class="form-label">Numéro WhatsApp de réception des commandes :</label>
+            <input type="text" class="form-input" value="+253 77078793" readonly style="background: var(--slate-100); font-weight: 700;">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Devise officielle du catalogue :</label>
+            <input type="text" class="form-input" value="FDJ (Franc Djiboutien)" readonly style="background: var(--slate-100); font-weight: 700;">
+          </div>
+
+          <div style="padding-top: 1rem; border-top: 1px solid var(--slate-200); display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="button" class="action-btn action-btn-secondary" id="btn-export-catalog">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              Télécharger Sauvegarde Catalogue (JSON)
+            </button>
+            <button type="button" class="action-btn action-btn-secondary" id="btn-reset-default-catalog" style="color: var(--danger-crimson);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Réinitialiser au Catalogue Initial
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Scripts JavaScript -->
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
