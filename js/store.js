@@ -1,5 +1,5 @@
 /**
- * DjibSHOP - Gestionnaire d'état & Persistance LocalStorage
+ * DjibSHOP - Gestionnaire d'état & Persistance (LocalStorage + Supabase Cloud Sync)
  */
 
 const STORAGE_KEYS = {
@@ -17,8 +17,7 @@ const DEFAULT_SETTINGS = {
   whatsappCleanNumber: "25377078793",
   currency: "FDJ",
   city: "Djibouti-Ville",
-  shippingInfo: "Livraison rapide à Djibouti & Balbala",
-  // Accepte abouali2004\ et abouali2004
+  shippingInfo: "Livraison express à Djibouti & Balbala",
   adminPassword: "abouali2004\\"
 };
 
@@ -27,8 +26,8 @@ class Store {
     this.init();
   }
 
-  init() {
-    // 1. Initialiser le catalogue
+  async init() {
+    // 1. Initialiser le catalogue local
     if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
       this.saveProducts(INITIAL_PRODUCTS);
     }
@@ -48,7 +47,7 @@ class Store {
       localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify([]));
     }
 
-    // 5. Initialiser les commandes
+    // 5. Initialiser les commandes d'exemple si vide
     if (!localStorage.getItem(STORAGE_KEYS.ORDERS)) {
       const sampleOrders = [
         {
@@ -58,26 +57,31 @@ class Store {
           customerPhone: "+253 77 12 34 56",
           district: "Héron, Villa 45",
           items: [
-            { title: "Chemise Blanche Lin Supérieur", size: "XL", quantity: 1, price: 4500 }
+            { title: "Chemise Blanche Lin Supérieur", size: "XL", quantity: 1, price: 4700 }
           ],
-          total: 4500,
+          total: 4700,
           status: "Livré"
-        },
-        {
-          id: "CMD-2026-0090",
-          date: "2026-02-13 16:45",
-          customerName: "Fatouma Ali",
-          customerPhone: "+253 77 65 43 21",
-          district: "Balbala, Cheik Moussa",
-          items: [
-            { title: "Sneakers Studio Sport Rouge & Blanc", size: "41", quantity: 1, price: 13500 },
-            { title: "Sacoche Urbaine Cuir Véritable", size: null, quantity: 1, price: 8900 }
-          ],
-          total: 22400,
-          status: "En cours"
         }
       ];
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(sampleOrders));
+    }
+
+    // 6. Synchronisation Supabase en arrière-plan si configuré
+    if (window.supabaseService && window.supabaseService.isConfigured) {
+      this.syncFromSupabase();
+    }
+  }
+
+  async syncFromSupabase() {
+    if (!window.supabaseService || !window.supabaseService.isConfigured) return;
+    try {
+      const remoteProducts = await window.supabaseService.fetchProducts();
+      if (remoteProducts && remoteProducts.length > 0) {
+        this.saveProducts(remoteProducts);
+        window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: remoteProducts } }));
+      }
+    } catch (e) {
+      console.warn("Échec de synchronisation Supabase", e);
     }
   }
 
@@ -101,7 +105,7 @@ class Store {
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
   }
 
-  addProduct(productData) {
+  async addProduct(productData) {
     const products = this.getProducts();
     const id = "prod-" + Date.now();
     const prefix = productData.category === "vetements" ? "VET" :
@@ -111,7 +115,10 @@ class Store {
 
     let totalStock = 0;
     if (productData.sizes && typeof productData.sizes === "object") {
-      totalStock = Object.values(productData.sizes).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+      totalStock = Object.values(productData.sizes).reduce((sum, item) => {
+        const qty = typeof item === "object" ? (parseInt(item.stock) || 0) : (parseInt(item) || 0);
+        return sum + qty;
+      }, 0);
     } else {
       totalStock = parseInt(productData.totalStock) || 0;
     }
@@ -126,17 +133,26 @@ class Store {
 
     products.unshift(newProduct);
     this.saveProducts(products);
+
+    // Sync cloud Supabase
+    if (window.supabaseService && window.supabaseService.isConfigured) {
+      window.supabaseService.saveProduct(newProduct);
+    }
+
     return newProduct;
   }
 
-  updateProduct(id, updatedFields) {
+  async updateProduct(id, updatedFields) {
     const products = this.getProducts();
     const index = products.findIndex(p => p.id === id);
     if (index === -1) return null;
 
     let totalStock = 0;
     if (updatedFields.sizes && typeof updatedFields.sizes === "object") {
-      totalStock = Object.values(updatedFields.sizes).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+      totalStock = Object.values(updatedFields.sizes).reduce((sum, item) => {
+        const qty = typeof item === "object" ? (parseInt(item.stock) || 0) : (parseInt(item) || 0);
+        return sum + qty;
+      }, 0);
     } else if (updatedFields.totalStock !== undefined) {
       totalStock = parseInt(updatedFields.totalStock) || 0;
     } else {
@@ -151,18 +167,33 @@ class Store {
     };
 
     this.saveProducts(products);
+
+    // Sync cloud Supabase
+    if (window.supabaseService && window.supabaseService.isConfigured) {
+      window.supabaseService.saveProduct(products[index]);
+    }
+
     return products[index];
   }
 
-  deleteProduct(id) {
+  async deleteProduct(id) {
     const products = this.getProducts();
     const filtered = products.filter(p => p.id !== id);
     this.saveProducts(filtered);
+
+    // Sync cloud Supabase
+    if (window.supabaseService && window.supabaseService.isConfigured) {
+      window.supabaseService.deleteProduct(id);
+    }
+
     return filtered;
   }
 
   resetCatalogToDefault() {
     this.saveProducts(INITIAL_PRODUCTS);
+    if (window.supabaseService && window.supabaseService.isConfigured) {
+      window.supabaseService.syncAllToSupabase(INITIAL_PRODUCTS);
+    }
     return INITIAL_PRODUCTS;
   }
 
@@ -181,13 +212,21 @@ class Store {
     window.dispatchEvent(new CustomEvent("cart-updated", { detail: { cart } }));
   }
 
-  addToCart(product, size = null, quantity = 1) {
+  addToCart(product, size = null, quantity = 1, itemPrice = null) {
     const cart = this.getCart();
     const existingIndex = cart.findIndex(item => item.id === product.id && item.size === size);
 
     let maxAvailable = 999;
+    let finalPrice = itemPrice || product.price;
+
     if (size && product.sizes && product.sizes[size] !== undefined) {
-      maxAvailable = parseInt(product.sizes[size]) || 0;
+      const sizeVal = product.sizes[size];
+      if (typeof sizeVal === "object") {
+        maxAvailable = parseInt(sizeVal.stock) || 0;
+        finalPrice = parseInt(sizeVal.price) || product.price;
+      } else {
+        maxAvailable = parseInt(sizeVal) || 0;
+      }
     } else {
       maxAvailable = parseInt(product.totalStock) || 0;
     }
@@ -205,6 +244,7 @@ class Store {
         };
       }
       cart[existingIndex].quantity = newQty;
+      cart[existingIndex].price = finalPrice;
     } else {
       if (quantity > maxAvailable) {
         return { 
@@ -216,7 +256,7 @@ class Store {
         id: product.id,
         ref: product.ref,
         title: product.title,
-        price: product.price,
+        price: finalPrice,
         image: (product.images && product.images[0]) || "",
         category: product.category,
         size: size,
@@ -261,42 +301,6 @@ class Store {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   }
 
-  // --- COMMANDES ET HISTORIQUE ---
-  getOrders() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  recordWhatsAppOrder(orderData) {
-    const orders = this.getOrders();
-    const newOrder = {
-      id: `CMD-2026-${String(orders.length + 101).padStart(4, "0")}`,
-      date: new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }),
-      items: orderData.items,
-      total: orderData.total,
-      district: orderData.district || "Non précisé",
-      customerName: orderData.customerName || "Client WhatsApp",
-      customerPhone: orderData.customerPhone || "Non renseigné",
-      status: "Envoyé sur WhatsApp"
-    };
-    orders.unshift(newOrder);
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-    return newOrder;
-  }
-
-  updateOrderStatus(orderId, newStatus) {
-    const orders = this.getOrders();
-    const target = orders.find(o => o.id === orderId);
-    if (target) {
-      target.status = newStatus;
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-    }
-  }
-
   // --- LISTE DE SOUHAITS ---
   getWishlist() {
     try {
@@ -308,44 +312,95 @@ class Store {
   }
 
   toggleWishlist(productId) {
-    let wishlist = this.getWishlist();
-    const idx = wishlist.indexOf(productId);
+    const wishlist = this.getWishlist();
+    const index = wishlist.indexOf(productId);
     let added = false;
-    if (idx > -1) {
-      wishlist.splice(idx, 1);
+    if (index > -1) {
+      wishlist.splice(index, 1);
       added = false;
     } else {
       wishlist.push(productId);
       added = true;
     }
     localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(wishlist));
-    window.dispatchEvent(new CustomEvent("wishlist-updated", { detail: { wishlist } }));
     return added;
   }
 
   isInWishlist(productId) {
-    return this.getWishlist().includes(productId);
+    const wishlist = this.getWishlist();
+    return wishlist.includes(productId);
   }
 
-  // --- AUTHENTIFICATION ADMIN ROBUSTE ---
+  // --- COMMANDES ---
+  getOrders() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  createOrder(customerInfo, cartItems, totalAmount) {
+    const orders = this.getOrders();
+    const newOrder = {
+      id: "CMD-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000),
+      date: new Date().toISOString().replace("T", " ").substring(0, 16),
+      customerName: customerInfo.name || "Client WhatsApp",
+      customerPhone: customerInfo.phone || "+253 77 ...",
+      district: customerInfo.district || "Djibouti",
+      items: cartItems.map(item => ({
+        title: item.title,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      total: totalAmount,
+      status: "En attente"
+    };
+
+    orders.unshift(newOrder);
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+
+    // Déduire des stocks
+    this.decrementStockFromOrder(newOrder);
+
+    return newOrder;
+  }
+
+  decrementStockFromOrder(order) {
+    const products = this.getProducts();
+    order.items.forEach(item => {
+      const prod = products.find(p => p.title === item.title);
+      if (prod) {
+        if (item.size && prod.sizes && prod.sizes[item.size] !== undefined) {
+          if (typeof prod.sizes[item.size] === "object") {
+            prod.sizes[item.size].stock = Math.max(0, prod.sizes[item.size].stock - item.quantity);
+          } else {
+            prod.sizes[item.size] = Math.max(0, prod.sizes[item.size] - item.quantity);
+          }
+          // Recalcul total
+          prod.totalStock = Object.values(prod.sizes).reduce((sum, s) => {
+            const qty = typeof s === "object" ? s.stock : s;
+            return sum + (parseInt(qty) || 0);
+          }, 0);
+        } else {
+          prod.totalStock = Math.max(0, prod.totalStock - item.quantity);
+        }
+      }
+    });
+    this.saveProducts(products);
+  }
+
+  // --- AUTHENTIFICATION ADMIN ---
   isAdminAuthenticated() {
-    return sessionStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === "authenticated";
+    return sessionStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === "true";
   }
 
-  loginAdmin(inputPassword) {
-    if (!inputPassword) return false;
-    const cleanInput = inputPassword.trim();
-
-    // Accepte avec backslash exact 'abouali2004\' ou sans backslash 'abouali2004'
-    const validPasswords = [
-      "abouali2004\\",
-      "abouali2004",
-      "abouali2004/",
-      "abouali2004\\\\"
-    ];
-
-    if (validPasswords.includes(cleanInput) || cleanInput.startsWith("abouali2004")) {
-      sessionStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, "authenticated");
+  loginAdmin(password) {
+    const cleanInput = (password || "").trim();
+    if (cleanInput === "abouali2004\\" || cleanInput === "abouali2004") {
+      sessionStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, "true");
       return true;
     }
     return false;
@@ -355,82 +410,70 @@ class Store {
     sessionStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
   }
 
-  // --- PARAMÈTRES BOUTIQUE ---
+  // --- PARAMÈTRES & WHATSAPP ---
   getSettings() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
+      return data ? JSON.parse(data) : DEFAULT_SETTINGS;
     } catch {
       return DEFAULT_SETTINGS;
     }
   }
 
-  updateSettings(newSettings) {
-    const current = this.getSettings();
-    const merged = { ...current, ...newSettings };
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
-    return merged;
-  }
-
-  // --- FORMATAGE ---
   formatPrice(amount) {
-    if (amount === undefined || amount === null || isNaN(amount)) return "0 FDJ";
-    return new Intl.NumberFormat("fr-FR").format(Math.round(amount)) + " FDJ";
+    const val = parseInt(amount) || 0;
+    return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " FDJ";
   }
 
-  buildSingleProductWhatsAppUrl(product, size, quantity, note = "") {
+  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null) {
     const settings = this.getSettings();
-    const phone = settings.whatsappCleanNumber;
-    const sizeInfo = size ? `\n• Taille choisie : *${size}*` : "";
-    const totalPrice = this.formatPrice(product.price * quantity);
-    
-    const message = 
-`Bonjour DjibSHOP ! Je souhaite commander cet article :
+    const phone = settings.whatsappCleanNumber || "25377078793";
+    const priceToUse = customPrice || product.price;
 
-• Produit : *${product.title}*
-• Référence : \`${product.ref}\`${sizeInfo}
-• Quantité : *${quantity}*
-• Prix unitaire : ${this.formatPrice(product.price)}
-• Montant total : *${totalPrice}*
-${note ? `\n• Note / Adresse : ${note}` : ""}
-
-Merci de me confirmer la disponibilité et le délai de livraison à Djibouti.`;
+    let message = `Bonjour DjibSHOP ! 👋\n`;
+    message += `Je souhaite commander l'article suivant :\n\n`;
+    message += `🛍️ *Produit :* ${product.title}\n`;
+    message += `🏷️ *Réf :* ${product.ref}\n`;
+    if (size) {
+      message += `📏 *Taille / Pointure :* ${size}\n`;
+    }
+    message += `🔢 *Quantité :* ${quantity}\n`;
+    message += `💰 *Prix unitaire :* ${this.formatPrice(priceToUse)}\n`;
+    message += `💵 *Total :* ${this.formatPrice(priceToUse * quantity)}\n\n`;
+    message += `Pouvez-vous me confirmer la disponibilité et les modalités de livraison à Djibouti ? Merci !`;
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }
 
-  buildCartWhatsAppUrl(cartItems, customerDetails = {}) {
+  generateCartWhatsAppLink(customerInfo, cartItems, totalAmount) {
     const settings = this.getSettings();
-    const phone = settings.whatsappCleanNumber;
-    const total = this.getCartTotal();
+    const phone = settings.whatsappCleanNumber || "25377078793";
 
-    let itemsList = "";
+    let message = `*NOUVELLE COMMANDE DJIBHOP* 🛍️\n`;
+    message += `==============================\n\n`;
+
+    if (customerInfo) {
+      message += `👤 *Client :* ${customerInfo.name || "Non renseigné"}\n`;
+      message += `📍 *Adresse / Quartier :* ${customerInfo.district || "Djibouti"}\n`;
+      message += `📞 *Téléphone / WhatsApp :* ${customerInfo.phone || "Non renseigné"}\n\n`;
+    }
+
+    message += `📋 *DÉTAIL DU PANIER :*\n`;
     cartItems.forEach((item, index) => {
-      const sizeStr = item.size ? ` (Taille: ${item.size})` : "";
-      itemsList += `${index + 1}. *${item.title}*${sizeStr}\n   Quantité : ${item.quantity} | Total : ${this.formatPrice(item.price * item.quantity)}\n`;
+      message += `${index + 1}. *${item.title}*\n`;
+      if (item.size) message += `   • Taille : ${item.size}\n`;
+      message += `   • Quantité : ${item.quantity}\n`;
+      message += `   • Prix : ${this.formatPrice(item.price)} (${this.formatPrice(item.price * item.quantity)})\n`;
     });
 
-    const clientInfo = 
-`• Client : ${customerDetails.name || "Client"}
-• Téléphone : ${customerDetails.phone || "Non renseigné"}
-• Quartier / Adresse de livraison : ${customerDetails.district || "Djibouti-Ville"}`;
-
-    const message = 
-`Bonjour DjibSHOP ! Je valide mon panier de commande :
-
---- ARTICLES COMMANDÉS ---
-${itemsList}
----
-• TOTAL DE LA COMMANDE : *${this.formatPrice(total)}*
-
---- INFORMATIONS DE LIVRAISON ---
-${clientInfo}
-${customerDetails.notes ? `• Remarques : ${customerDetails.notes}\n` : ""}
-Merci de me contacter pour la validation de ma commande.`;
+    message += `\n==============================\n`;
+    message += `💰 *TOTAL DE LA COMMANDE : ${this.formatPrice(totalAmount)}*\n`;
+    message += `🚚 *Paiement :* À la livraison à Djibouti\n\n`;
+    message += `Merci de traiter ma commande dans les plus brefs délais !`;
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }
 }
 
-// Instance globale du magasin
+// Instance globale
 const store = new Store();

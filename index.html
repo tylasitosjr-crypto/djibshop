@@ -194,7 +194,7 @@
       <div class="modal-content-grid">
         <!-- Galerie Photos Studio Shein Fond Blanc -->
         <div class="modal-gallery">
-          <div class="modal-main-image-wrap">
+          <div class="modal-main-image-wrap" id="modal-gallery-main-wrap">
             <img src="" id="modal-gallery-main-img" class="modal-main-image" alt="Article DjibSHOP">
           </div>
           <div class="modal-thumbnails" id="modal-gallery-thumbnails">
@@ -204,6 +204,13 @@
 
         <!-- Détails, Tailles et Achat WhatsApp -->
         <div class="modal-info">
+          <!-- Vente flash banner dans modal -->
+          <div id="modal-flash-sale-banner" class="modal-flash-sale-badge" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>VENTE FLASH SE TERMINE DANS :</span>
+            <strong class="modal-flash-timer flash-timer-display" data-end="">--:--:--</strong>
+          </div>
+
           <div class="modal-header-meta">
             <span class="modal-category-badge" id="modal-category-badge">Vêtements</span>
             <span class="modal-ref" id="modal-product-ref">REF : DJ-VET-001</span>
@@ -385,8 +392,11 @@
     </div>
   </footer>
 
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Scripts JavaScript Modulaires -->
   <script src="js/data.js"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
 </body>

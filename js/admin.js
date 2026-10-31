@@ -1,12 +1,17 @@
 /**
- * DjibSHOP - Contrôleur du Portail Administrateur Autonome
- * Mot de passe de gestion : abouali2004\ (ou abouali2004)
+ * DjibSHOP - Contrôleur de l'Espace Administrateur Privé (Version Améliorée)
+ * - Tailles avec prix et stock variables (XXL, XL, XXXL ou 37 à 45)
+ * - Vente Flash avec compte à rebours
+ * - 1 à 4 photos par produit
+ * - 3 Finitions Studio Fond (Blanc 100%, Doux Gris, Doux Bleu) intégrées sans téléchargement
+ * - Interface Mobile Haute Définition ultra-optimisée
+ * - Connexion Cloud Database Supabase
  */
 
-class AdminController {
+class AdminApp {
   constructor() {
     this.currentEditingId = null;
-    this.activeTab = "catalog"; // 'catalog' | 'add' | 'orders' | 'settings'
+    this.activeTab = "catalog";
     this.uploadedImages = [];
     this.selectedBgStyle = "studio-white";
     this.isPasswordVisible = false;
@@ -17,64 +22,77 @@ class AdminController {
   }
 
   initElements() {
-    // Vues principales du portail
+    // Vues Principales
     this.loginView = document.getElementById("admin-login-view");
     this.portalView = document.getElementById("admin-portal-view");
 
-    // Éléments de connexion
+    // Login & Mot de passe
     this.passInput = document.getElementById("admin-pass-input");
-    this.loginSubmitBtn = document.getElementById("btn-admin-login-submit");
     this.passError = document.getElementById("admin-pass-error");
+    this.loginSubmitBtn = document.getElementById("btn-admin-login-submit");
     this.toggleEyeBtn = document.getElementById("btn-toggle-eye");
     this.eyeIconSvg = document.getElementById("eye-icon-svg");
     this.logoutBtn = document.getElementById("btn-admin-logout");
 
-    // Onglets Dashboard
+    // Onglets
     this.adminTabs = document.querySelectorAll(".admin-tab-btn");
     this.tabPanels = {
       catalog: document.getElementById("admin-panel-catalog"),
       add: document.getElementById("admin-panel-add"),
       orders: document.getElementById("admin-panel-orders"),
-      settings: document.getElementById("admin-panel-settings")
+      settings: document.getElementById("admin-panel-settings"),
+      supabase: document.getElementById("admin-panel-supabase")
     };
 
-    // Formulaire d'ajout / modification de produit
+    // Formulaire Produit
     this.productForm = document.getElementById("admin-product-form");
-    this.categorySelect = document.getElementById("prod-category-select");
-    this.variantContainer = document.getElementById("dynamic-variant-fields");
     this.formHeading = document.getElementById("admin-form-heading");
     this.formSubmitBtn = document.getElementById("admin-form-submit-btn");
     this.cancelEditBtn = document.getElementById("admin-cancel-edit-btn");
+    this.categorySelect = document.getElementById("prod-category-select");
+    this.variantContainer = document.getElementById("dynamic-variant-fields");
 
-    // Images & Finition Studio
+    // Vente Flash
+    this.flashSaleToggle = document.getElementById("prod-flash-sale-toggle");
+    this.flashSaleConfig = document.getElementById("prod-flash-sale-config");
+    this.flashSaleHours = document.getElementById("prod-flash-hours");
+
+    // Photos & Arrière-plans Studio
     this.imgUrlInput = document.getElementById("prod-img-url");
     this.addImgUrlBtn = document.getElementById("btn-add-img-url");
     this.fileUploadInput = document.getElementById("prod-img-file");
     this.imagesPreviewList = document.getElementById("admin-images-preview-list");
-    this.bgStyleSelect = document.getElementById("prod-bg-style");
+    this.imageCountNotice = document.getElementById("admin-image-count-notice");
 
-    // Catalogue
+    // Options Fond Studio Rapide
+    this.bgOptionCards = document.querySelectorAll(".bg-choice-card");
+
+    // Tableau & Filtres
     this.adminTableBody = document.getElementById("admin-products-table-body");
     this.adminSearchInput = document.getElementById("admin-search-products");
     this.adminCategoryFilter = document.getElementById("admin-category-filter");
-
-    // Commandes
     this.adminOrdersTableBody = document.getElementById("admin-orders-table-body");
 
-    // Statistiques
+    // Compteurs Statistiques
     this.statTotalProducts = document.getElementById("stat-total-products");
     this.statStockValue = document.getElementById("stat-stock-value");
     this.statOutOfStock = document.getElementById("stat-out-of-stock");
     this.statTotalOrders = document.getElementById("stat-total-orders");
+
+    // Supabase
+    this.supabaseUrlInput = document.getElementById("supabase-url-input");
+    this.supabaseKeyInput = document.getElementById("supabase-key-input");
+    this.supabaseSaveBtn = document.getElementById("btn-save-supabase");
+    this.supabaseTestBtn = document.getElementById("btn-test-supabase");
+    this.supabaseSyncAllBtn = document.getElementById("btn-sync-all-supabase");
+    this.supabaseStatusAlert = document.getElementById("supabase-status-alert");
   }
 
   bindEvents() {
-    // Bouton Œil (Afficher / Masquer le mot de passe)
+    // Mot de passe
     if (this.toggleEyeBtn) {
       this.toggleEyeBtn.addEventListener("click", () => this.togglePasswordVisibility());
     }
-
-    // Connexion
     if (this.loginSubmitBtn) {
       this.loginSubmitBtn.addEventListener("click", () => this.handleLogin());
     }
@@ -89,7 +107,7 @@ class AdminController {
       this.logoutBtn.addEventListener("click", () => this.handleLogout());
     }
 
-    // Navigation des onglets
+    // Onglets
     this.adminTabs.forEach(btn => {
       btn.addEventListener("click", () => {
         const tab = btn.dataset.tab;
@@ -97,12 +115,31 @@ class AdminController {
       });
     });
 
-    // Choix dynamique de la catégorie
+    // Catégorie changeante
     if (this.categorySelect) {
       this.categorySelect.addEventListener("change", () => {
         this.renderDynamicSizeInputs(this.categorySelect.value);
       });
     }
+
+    // Vente flash toggle
+    if (this.flashSaleToggle) {
+      this.flashSaleToggle.addEventListener("change", (e) => {
+        if (this.flashSaleConfig) {
+          this.flashSaleConfig.style.display = e.target.checked ? "block" : "none";
+        }
+      });
+    }
+
+    // Choix du fond studio direct (1-clic)
+    this.bgOptionCards.forEach(card => {
+      card.addEventListener("click", () => {
+        this.bgOptionCards.forEach(c => c.classList.remove("active"));
+        card.classList.add("active");
+        this.selectedBgStyle = card.dataset.bg;
+        this.renderImagesPreview();
+      });
+    });
 
     // Gestion des images
     if (this.addImgUrlBtn) {
@@ -110,12 +147,6 @@ class AdminController {
     }
     if (this.fileUploadInput) {
       this.fileUploadInput.addEventListener("change", (e) => this.handleFileUpload(e));
-    }
-    if (this.bgStyleSelect) {
-      this.bgStyleSelect.addEventListener("change", (e) => {
-        this.selectedBgStyle = e.target.value;
-        this.renderImagesPreview();
-      });
     }
 
     // Formulaire Produit
@@ -138,6 +169,17 @@ class AdminController {
       this.adminCategoryFilter.addEventListener("change", () => this.renderAdminProductsTable());
     }
 
+    // Supabase events
+    if (this.supabaseSaveBtn) {
+      this.supabaseSaveBtn.addEventListener("click", () => this.saveSupabaseConfig());
+    }
+    if (this.supabaseTestBtn) {
+      this.supabaseTestBtn.addEventListener("click", () => this.testSupabaseConnection());
+    }
+    if (this.supabaseSyncAllBtn) {
+      this.supabaseSyncAllBtn.addEventListener("click", () => this.syncAllToSupabase());
+    }
+
     // Réinitialisation & Export
     document.getElementById("btn-reset-default-catalog")?.addEventListener("click", () => {
       if (confirm("Réinitialiser le catalogue avec les données d'origine ? Vos modifications manuelles seront remplacées.")) {
@@ -153,16 +195,14 @@ class AdminController {
     });
   }
 
-  // --- GESTION DU MOT DE PASSE AVEC ICÔNE ŒIL ---
+  // --- MOT DE PASSE & CONNEXION ---
   togglePasswordVisibility() {
     this.isPasswordVisible = !this.isPasswordVisible;
     if (this.passInput) {
       this.passInput.type = this.isPasswordVisible ? "text" : "password";
     }
-
     if (this.eyeIconSvg) {
       if (this.isPasswordVisible) {
-        // Icône œil barré (masquer)
         this.eyeIconSvg.innerHTML = `
           <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
           <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
@@ -170,7 +210,6 @@ class AdminController {
           <line x1="2" y1="2" x2="22" y2="22"/>
         `;
       } else {
-        // Icône œil normal (afficher)
         this.eyeIconSvg.innerHTML = `
           <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
           <circle cx="12" cy="12" r="3"/>
@@ -220,6 +259,7 @@ class AdminController {
     this.renderAdminProductsTable();
     this.renderAdminOrdersTable();
     this.renderDynamicSizeInputs(this.categorySelect ? this.categorySelect.value : "vetements");
+    this.loadSupabaseForm();
   }
 
   switchTab(tabName) {
@@ -238,10 +278,11 @@ class AdminController {
       this.updateStats();
     } else if (tabName === "orders") {
       this.renderAdminOrdersTable();
+    } else if (tabName === "supabase") {
+      this.loadSupabaseForm();
     }
   }
 
-  // --- STATISTIQUES ---
   updateStats() {
     const products = store.getProducts();
     const orders = store.getOrders();
@@ -256,28 +297,64 @@ class AdminController {
     if (this.statTotalOrders) this.statTotalOrders.textContent = orders.length;
   }
 
-  // --- VARIANTES DE TAILLES DYNAMIQUES (VÊTEMENTS VS CHAUSSURES VS ACCESSOIRES) ---
+  // --- RENDU DYNAMIQUE DES TAILLES & PRIX PROGRESSIFS ---
   renderDynamicSizeInputs(category, existingSizes = null, existingStock = null) {
     if (!this.variantContainer) return;
     this.variantContainer.innerHTML = "";
+
+    const basePrice = parseFloat(document.getElementById("prod-price").value) || 3000;
 
     if (category === "vetements") {
       let html = `
         <div class="variant-matrix-card">
           <div class="variant-matrix-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
-            Grille des Tailles Vêtements (Options S, M, L, XL, XXL, XXXL, XXXXL)
+            Tailles Vêtements & Prix Progressifs
           </div>
-          <p class="variant-matrix-desc">Définissez la quantité exacte disponible pour chaque taille.</p>
-          <div class="sizes-stock-grid">
+          <p class="variant-matrix-desc">
+            Cochez les tailles proposées (S, M, L, XL, XXL, XXXL, XXXXL). Vous pouvez ajuster le <strong>stock</strong> et le <strong>prix spécifique</strong> de chaque taille (ex: taille plus grande = prix plus élevé).
+          </p>
+
+          <div class="sizes-stock-grid-advanced">
       `;
 
-      CLOTHING_SIZES.forEach(size => {
-        const val = existingSizes && existingSizes[size] !== undefined ? existingSizes[size] : 5;
+      CLOTHING_SIZES.forEach((size, idx) => {
+        let isChecked = true;
+        let stockVal = 5;
+        let priceVal = basePrice;
+
+        if (existingSizes && typeof existingSizes === "object") {
+          if (existingSizes[size] !== undefined) {
+            isChecked = true;
+            if (typeof existingSizes[size] === "object") {
+              stockVal = existingSizes[size].stock !== undefined ? existingSizes[size].stock : 5;
+              priceVal = existingSizes[size].price !== undefined ? existingSizes[size].price : basePrice;
+            } else {
+              stockVal = existingSizes[size];
+            }
+          } else {
+            isChecked = false;
+          }
+        }
+
         html += `
-          <div class="size-stock-input-card">
-            <label class="size-stock-label">Taille ${size}</label>
-            <input type="number" min="0" max="999" class="size-stock-num-input size-input-item" data-size="${size}" value="${val}">
+          <div class="size-config-card ${isChecked ? "active" : ""}" id="size-card-${size}">
+            <div class="size-config-header">
+              <label class="size-check-label">
+                <input type="checkbox" class="size-enable-toggle" data-size="${size}" ${isChecked ? "checked" : ""}>
+                <span class="size-name-badge">${size}</span>
+              </label>
+            </div>
+            <div class="size-config-inputs" style="${isChecked ? "" : "opacity: 0.4; pointer-events: none;"}">
+              <div class="size-input-field">
+                <label>Stock :</label>
+                <input type="number" min="0" max="999" class="form-input size-stock-input" data-size="${size}" value="${stockVal}">
+              </div>
+              <div class="size-input-field">
+                <label>Prix (FDJ) :</label>
+                <input type="number" min="50" step="50" class="form-input size-price-input" data-size="${size}" value="${priceVal}">
+              </div>
+            </div>
           </div>
         `;
       });
@@ -285,18 +362,45 @@ class AdminController {
       html += `
           </div>
           <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button type="button" class="action-btn action-btn-secondary" id="btn-quick-fill-clothes-10">+10 partout</button>
-            <button type="button" class="action-btn action-btn-secondary" id="btn-quick-fill-clothes-0">Mettre à 0</button>
+            <button type="button" class="action-btn action-btn-secondary" id="btn-auto-increment-price">+200 FDJ par taille supérieure</button>
+            <button type="button" class="action-btn action-btn-secondary" id="btn-select-all-clothes">Tout cocher</button>
           </div>
         </div>
       `;
       this.variantContainer.innerHTML = html;
 
-      document.getElementById("btn-quick-fill-clothes-10")?.addEventListener("click", () => {
-        document.querySelectorAll(".size-input-item").forEach(inp => inp.value = 10);
+      // Événements d'activation des cartes
+      this.variantContainer.querySelectorAll(".size-enable-toggle").forEach(toggle => {
+        toggle.addEventListener("change", (e) => {
+          const card = document.getElementById(`size-card-${e.target.dataset.size}`);
+          if (card) {
+            card.classList.toggle("active", e.target.checked);
+            const inputsDiv = card.querySelector(".size-config-inputs");
+            if (inputsDiv) {
+              inputsDiv.style.opacity = e.target.checked ? "1" : "0.4";
+              inputsDiv.style.pointerEvents = e.target.checked ? "auto" : "none";
+            }
+          }
+        });
       });
-      document.getElementById("btn-quick-fill-clothes-0")?.addEventListener("click", () => {
-        document.querySelectorAll(".size-input-item").forEach(inp => inp.value = 0);
+
+      // Bouton incrémentation automatique de prix (taille plus grande = prix plus grand)
+      document.getElementById("btn-auto-increment-price")?.addEventListener("click", () => {
+        let currentP = parseFloat(document.getElementById("prod-price").value) || 3000;
+        this.variantContainer.querySelectorAll(".size-config-card").forEach(card => {
+          const priceInput = card.querySelector(".size-price-input");
+          if (priceInput) {
+            priceInput.value = currentP;
+            currentP += 200;
+          }
+        });
+      });
+
+      document.getElementById("btn-select-all-clothes")?.addEventListener("click", () => {
+        this.variantContainer.querySelectorAll(".size-enable-toggle").forEach(t => {
+          t.checked = true;
+          t.dispatchEvent(new Event("change"));
+        });
       });
 
     } else if (category === "chaussures") {
@@ -304,18 +408,52 @@ class AdminController {
         <div class="variant-matrix-card">
           <div class="variant-matrix-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v-2.38C4 11.5 5.5 10 7.5 10H11v6H4Z"/><path d="M11 16v-6h4.5c2 0 3.5 1.5 3.5 3.62V16H11Z"/><path d="M2 19h20"/></svg>
-            Pointures Chaussures (38, 39, 40, 41, 42, 43, 44, 45)
+            Pointures Chaussures (37 à 45) & Prix Personnalisés
           </div>
-          <p class="variant-matrix-desc">Indiquez le stock restant pour chaque pointure.</p>
-          <div class="sizes-stock-grid">
+          <p class="variant-matrix-desc">
+            Cochez les pointures disponibles pour ce modèle (37, 38, 39, 40, 41, 42, 43, 44, 45) et paramétrez leur stock et prix unitaire.
+          </p>
+
+          <div class="sizes-stock-grid-advanced">
       `;
 
       SHOE_SIZES.forEach(size => {
-        const val = existingSizes && existingSizes[size] !== undefined ? existingSizes[size] : 4;
+        let isChecked = true;
+        let stockVal = 4;
+        let priceVal = basePrice;
+
+        if (existingSizes && typeof existingSizes === "object") {
+          if (existingSizes[size] !== undefined) {
+            isChecked = true;
+            if (typeof existingSizes[size] === "object") {
+              stockVal = existingSizes[size].stock !== undefined ? existingSizes[size].stock : 4;
+              priceVal = existingSizes[size].price !== undefined ? existingSizes[size].price : basePrice;
+            } else {
+              stockVal = existingSizes[size];
+            }
+          } else {
+            isChecked = false;
+          }
+        }
+
         html += `
-          <div class="size-stock-input-card">
-            <label class="size-stock-label">N° ${size}</label>
-            <input type="number" min="0" max="999" class="size-stock-num-input size-input-item" data-size="${size}" value="${val}">
+          <div class="size-config-card ${isChecked ? "active" : ""}" id="size-card-${size}">
+            <div class="size-config-header">
+              <label class="size-check-label">
+                <input type="checkbox" class="size-enable-toggle" data-size="${size}" ${isChecked ? "checked" : ""}>
+                <span class="size-name-badge">N° ${size}</span>
+              </label>
+            </div>
+            <div class="size-config-inputs" style="${isChecked ? "" : "opacity: 0.4; pointer-events: none;"}">
+              <div class="size-input-field">
+                <label>Stock :</label>
+                <input type="number" min="0" max="999" class="form-input size-stock-input" data-size="${size}" value="${stockVal}">
+              </div>
+              <div class="size-input-field">
+                <label>Prix (FDJ) :</label>
+                <input type="number" min="50" step="50" class="form-input size-price-input" data-size="${size}" value="${priceVal}">
+              </div>
+            </div>
           </div>
         `;
       });
@@ -323,18 +461,40 @@ class AdminController {
       html += `
           </div>
           <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button type="button" class="action-btn action-btn-secondary" id="btn-quick-fill-shoes-5">+5 partout</button>
-            <button type="button" class="action-btn action-btn-secondary" id="btn-quick-fill-shoes-0">Mettre à 0</button>
+            <button type="button" class="action-btn action-btn-secondary" id="btn-select-all-shoes">Cocher du 38 au 44</button>
+            <button type="button" class="action-btn action-btn-secondary" id="btn-sync-shoes-price">Appliquer le prix de base à toutes</button>
           </div>
         </div>
       `;
       this.variantContainer.innerHTML = html;
 
-      document.getElementById("btn-quick-fill-shoes-5")?.addEventListener("click", () => {
-        document.querySelectorAll(".size-input-item").forEach(inp => inp.value = 5);
+      this.variantContainer.querySelectorAll(".size-enable-toggle").forEach(toggle => {
+        toggle.addEventListener("change", (e) => {
+          const card = document.getElementById(`size-card-${e.target.dataset.size}`);
+          if (card) {
+            card.classList.toggle("active", e.target.checked);
+            const inputsDiv = card.querySelector(".size-config-inputs");
+            if (inputsDiv) {
+              inputsDiv.style.opacity = e.target.checked ? "1" : "0.4";
+              inputsDiv.style.pointerEvents = e.target.checked ? "auto" : "none";
+            }
+          }
+        });
       });
-      document.getElementById("btn-quick-fill-shoes-0")?.addEventListener("click", () => {
-        document.querySelectorAll(".size-input-item").forEach(inp => inp.value = 0);
+
+      document.getElementById("btn-select-all-shoes")?.addEventListener("click", () => {
+        const standard = ["38", "39", "40", "41", "42", "43", "44"];
+        this.variantContainer.querySelectorAll(".size-enable-toggle").forEach(t => {
+          t.checked = standard.includes(t.dataset.size);
+          t.dispatchEvent(new Event("change"));
+        });
+      });
+
+      document.getElementById("btn-sync-shoes-price")?.addEventListener("click", () => {
+        const currentP = parseFloat(document.getElementById("prod-price").value) || 12000;
+        this.variantContainer.querySelectorAll(".size-price-input").forEach(inp => {
+          inp.value = currentP;
+        });
       });
 
     } else {
@@ -345,7 +505,7 @@ class AdminController {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             Stock Global de l'Article
           </div>
-          <p class="variant-matrix-desc">Pour les accessoires et articles sans tailles variables, définissez la limite de stock disponible.</p>
+          <p class="variant-matrix-desc">Pour les accessoires et articles sans tailles variables, définissez la quantité globale disponible.</p>
           <div style="max-width: 240px;">
             <label class="form-label">Nombre d'unités en stock :</label>
             <input type="number" min="0" max="9999" id="prod-global-stock" class="form-input" style="font-weight: 700; font-size: 1.1rem;" value="${val}">
@@ -355,8 +515,12 @@ class AdminController {
     }
   }
 
-  // --- PHOTOS & STUDIO FOND BLANC PUR ---
+  // --- PHOTOS : 1 À 4 IMAGES & VISUELLES ULTRA SOIGNÉS ---
   addImageFromUrl() {
+    if (this.uploadedImages.length >= 4) {
+      alert("Limite de 4 images par article atteinte !");
+      return;
+    }
     const url = this.imgUrlInput.value.trim();
     if (!url) return;
     this.uploadedImages.push(url);
@@ -368,12 +532,22 @@ class AdminController {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach(file => {
+    const remainingSlots = 4 - this.uploadedImages.length;
+    if (remainingSlots <= 0) {
+      alert("Vous avez déjà atteint le maximum de 4 photos.");
+      return;
+    }
+
+    const toProcess = Array.from(files).slice(0, remainingSlots);
+
+    toProcess.forEach(file => {
       if (!file.type.startsWith("image/")) return;
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.uploadedImages.push(e.target.result);
-        this.renderImagesPreview();
+        if (this.uploadedImages.length < 4) {
+          this.uploadedImages.push(e.target.result);
+          this.renderImagesPreview();
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -384,48 +558,35 @@ class AdminController {
     if (!this.imagesPreviewList) return;
     this.imagesPreviewList.innerHTML = "";
 
+    if (this.imageCountNotice) {
+      this.imageCountNotice.textContent = `${this.uploadedImages.length}/4 photo(s) ajoutée(s)`;
+    }
+
     if (this.uploadedImages.length === 0) {
       this.imagesPreviewList.innerHTML = `
         <div style="font-size: 0.8rem; color: var(--slate-400); grid-column: 1/-1; padding: 0.5rem 0;">
-          Aucune image ajoutée. Téléchargez un fichier ou collez une URL directe.
+          Aucune photo sélectionnée (Vous pouvez en ajouter de 1 à 4).
         </div>
       `;
       return;
     }
 
+    const bgMap = {
+      "studio-white": "#FFFFFF",
+      "studio-gray": "#F1F5F9",
+      "studio-blue": "#EFF6FF"
+    };
+    const currentBg = bgMap[this.selectedBgStyle] || "#FFFFFF";
+
     this.uploadedImages.forEach((imgSrc, index) => {
       const item = document.createElement("div");
-      item.style.cssText = `
-        position: relative;
-        width: 80px;
-        height: 80px;
-        border-radius: var(--radius-md);
-        border: 2px solid ${index === 0 ? "var(--blue-600)" : "var(--slate-200)"};
-        background: #FFFFFF;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-      `;
+      item.className = "admin-img-preview-card";
+      item.style.backgroundColor = currentBg;
 
       item.innerHTML = `
-        <img src="${imgSrc}" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;" alt="Aperçu ${index}">
-        <button type="button" class="del-img-btn" data-index="${index}" style="
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          background: rgba(220, 38, 38, 0.9);
-          color: white;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 11px;
-          cursor: pointer;
-        ">&times;</button>
-        ${index === 0 ? `<span style="position: absolute; bottom: 2px; left: 2px; background: var(--blue-700); color: white; font-size: 9px; padding: 1px 4px; border-radius: 2px; font-weight: 700;">Principale</span>` : ""}
+        <img src="${imgSrc}" alt="Photo ${index + 1}">
+        <button type="button" class="del-img-btn" data-index="${index}">&times;</button>
+        <span class="img-badge-order">${index === 0 ? "Principale" : `Photo ${index + 1}`}</span>
       `;
 
       item.querySelector(".del-img-btn").addEventListener("click", () => {
@@ -437,8 +598,8 @@ class AdminController {
     });
   }
 
-  // --- SOUMISSION PRODUIT ---
-  handleProductSubmit() {
+  // --- SOUMISSION DU FORMULAIRE PRODUIT ---
+  async handleProductSubmit() {
     const title = document.getElementById("prod-title").value.trim();
     const category = this.categorySelect.value;
     const price = parseFloat(document.getElementById("prod-price").value) || 0;
@@ -446,6 +607,13 @@ class AdminController {
     const originalPrice = originalPriceInput ? parseFloat(originalPriceInput) : null;
     const badge = document.getElementById("prod-badge").value;
     const description = document.getElementById("prod-desc").value.trim();
+
+    const isFlashSale = this.flashSaleToggle ? this.flashSaleToggle.checked : false;
+    let flashSaleEnds = null;
+    if (isFlashSale) {
+      const hours = parseInt(this.flashSaleHours?.value) || 24;
+      flashSaleEnds = new Date(Date.now() + 1000 * 60 * 60 * hours).toISOString();
+    }
 
     if (!title || price <= 0) {
       alert("Veuillez renseigner un titre valide et un prix supérieur à 0 FDJ.");
@@ -457,11 +625,25 @@ class AdminController {
 
     if (category === "vetements" || category === "chaussures") {
       sizes = {};
-      const inputs = this.variantContainer.querySelectorAll(".size-input-item");
-      inputs.forEach(inp => {
-        const sizeKey = inp.dataset.size;
-        const count = parseInt(inp.value) || 0;
-        sizes[sizeKey] = count;
+      const enabledToggles = this.variantContainer.querySelectorAll(".size-enable-toggle:checked");
+      if (enabledToggles.length === 0) {
+        alert("Veuillez cocher au moins une taille ou pointure disponible pour cet article.");
+        return;
+      }
+
+      enabledToggles.forEach(toggle => {
+        const sizeKey = toggle.dataset.size;
+        const card = document.getElementById(`size-card-${sizeKey}`);
+        const stockInput = card ? card.querySelector(".size-stock-input") : null;
+        const priceInput = card ? card.querySelector(".size-price-input") : null;
+
+        const count = stockInput ? (parseInt(stockInput.value) || 0) : 0;
+        const itemPrice = priceInput ? (parseFloat(priceInput.value) || price) : price;
+
+        sizes[sizeKey] = {
+          stock: count,
+          price: itemPrice
+        };
         totalStock += count;
       });
     } else {
@@ -479,7 +661,9 @@ class AdminController {
       category,
       price,
       originalPrice,
-      badge,
+      badge: isFlashSale ? "Flash Sale" : badge,
+      flashSale: isFlashSale,
+      flashSaleEnds,
       description,
       images: finalImages,
       sizes,
@@ -488,10 +672,10 @@ class AdminController {
     };
 
     if (this.currentEditingId) {
-      store.updateProduct(this.currentEditingId, productPayload);
+      await store.updateProduct(this.currentEditingId, productPayload);
       alert(`Produit "${title}" mis à jour avec succès !`);
     } else {
-      store.addProduct(productPayload);
+      await store.addProduct(productPayload);
       alert(`Produit "${title}" mis en ligne avec succès sur DjibSHOP !`);
     }
 
@@ -508,7 +692,7 @@ class AdminController {
     this.currentEditingId = product.id;
     this.switchTab("add");
 
-    if (this.formHeading) this.formHeading.textContent = `Modifier le produit : ${product.ref}`;
+    if (this.formHeading) this.formHeading.textContent = `Modifier : ${product.ref}`;
     if (this.formSubmitBtn) this.formSubmitBtn.textContent = "Enregistrer les modifications";
     if (this.cancelEditBtn) this.cancelEditBtn.style.display = "inline-flex";
 
@@ -519,11 +703,21 @@ class AdminController {
     document.getElementById("prod-badge").value = product.badge || "Aucun";
     document.getElementById("prod-desc").value = product.description || "";
 
+    if (this.flashSaleToggle) {
+      this.flashSaleToggle.checked = !!product.flashSale;
+      if (this.flashSaleConfig) {
+        this.flashSaleConfig.style.display = product.flashSale ? "block" : "none";
+      }
+    }
+
     this.uploadedImages = product.images ? [...product.images] : [];
     this.selectedBgStyle = product.bgStyle || "studio-white";
-    if (this.bgStyleSelect) this.bgStyleSelect.value = this.selectedBgStyle;
-    this.renderImagesPreview();
 
+    this.bgOptionCards.forEach(c => {
+      c.classList.toggle("active", c.dataset.bg === this.selectedBgStyle);
+    });
+
+    this.renderImagesPreview();
     this.renderDynamicSizeInputs(product.category, product.sizes, product.totalStock);
     window.scrollTo({ top: 100, behavior: "smooth" });
   }
@@ -534,11 +728,15 @@ class AdminController {
     if (this.formHeading) this.formHeading.textContent = "Ajouter un nouveau produit";
     if (this.formSubmitBtn) this.formSubmitBtn.textContent = "Enregistrer et mettre en ligne";
     if (this.cancelEditBtn) this.cancelEditBtn.style.display = "none";
+    if (this.flashSaleConfig) this.flashSaleConfig.style.display = "none";
     this.uploadedImages = [];
+    this.selectedBgStyle = "studio-white";
+    this.bgOptionCards.forEach(c => c.classList.toggle("active", c.dataset.bg === "studio-white"));
     this.renderImagesPreview();
     this.renderDynamicSizeInputs(this.categorySelect ? this.categorySelect.value : "vetements");
   }
 
+  // --- RENDU CATALOGUE ADMIN ---
   renderAdminProductsTable() {
     if (!this.adminTableBody) return;
 
@@ -559,79 +757,76 @@ class AdminController {
       );
     }
 
+    this.adminTableBody.innerHTML = "";
+
     if (products.length === 0) {
       this.adminTableBody.innerHTML = `
         <tr>
           <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--slate-400);">
-            Aucun article trouvé dans le catalogue.
+            Aucun article trouvé.
           </td>
         </tr>
       `;
       return;
     }
 
-    this.adminTableBody.innerHTML = "";
+    const bgMap = {
+      "studio-white": "#FFFFFF",
+      "studio-gray": "#F1F5F9",
+      "studio-blue": "#EFF6FF"
+    };
 
     products.forEach(p => {
       const tr = document.createElement("tr");
-
-      let stockBadge = "";
-      if (p.totalStock <= 0) {
-        stockBadge = `<span class="size-mini-tag out" style="color: var(--danger-crimson); background: var(--danger-light); font-weight: 800;">Rupture</span>`;
-      } else if (p.totalStock <= 5) {
-        stockBadge = `<span class="size-mini-tag" style="color: var(--warning-amber); background: var(--warning-light); font-weight: 800;">Bas (${p.totalStock})</span>`;
-      } else {
-        stockBadge = `<span class="size-mini-tag" style="color: var(--success-emerald); background: var(--success-light); font-weight: 800;">En stock (${p.totalStock})</span>`;
-      }
+      const img = (p.images && p.images[0]) || "";
+      const bg = bgMap[p.bgStyle] || "#FFFFFF";
 
       let sizesSummary = "";
-      if (p.sizes && Object.keys(p.sizes).length > 0) {
-        sizesSummary = Object.entries(p.sizes)
-          .map(([sz, count]) => `<span style="font-size: 0.72rem; padding: 1px 4px; margin-right: 2px; border-radius: 3px; background: ${count > 0 ? '#E2E8F0' : '#FEE2E2'}; color: ${count > 0 ? '#334155' : '#991B1B'}">${sz}:${count}</span>`)
-          .join("");
+      if (p.sizes && typeof p.sizes === "object") {
+        sizesSummary = Object.entries(p.sizes).map(([k, v]) => {
+          const count = typeof v === "object" ? v.stock : v;
+          const price = typeof v === "object" && v.price ? ` (${store.formatPrice(v.price)})` : "";
+          return `<span style="font-size: 0.75rem; background: var(--slate-100); padding: 2px 6px; border-radius: 3px; margin: 2px; display: inline-block;"><strong>${k}</strong>: ${count}${price}</span>`;
+        }).join(" ");
       } else {
-        sizesSummary = `<span style="color: var(--slate-500); font-size: 0.75rem;">Standard (${p.totalStock})</span>`;
+        sizesSummary = `<span style="font-size: 0.75rem; color: var(--slate-500);">Unique (${p.totalStock || 0} en stock)</span>`;
       }
 
-      const imgThumb = (p.images && p.images[0]) || "";
-
       tr.innerHTML = `
-        <td style="width: 60px;">
-          <img src="${imgThumb}" class="admin-table-thumb" alt="${p.title}" style="background: #ffffff; object-fit: contain; padding: 2px; border: 1px solid var(--slate-200);">
+        <td>
+          <div style="width: 50px; height: 50px; border-radius: 6px; border: 1px solid var(--slate-200); background-color: ${bg}; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <img src="${img}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain; padding: 2px;">
+          </div>
         </td>
         <td>
-          <div style="font-weight: 700; color: var(--slate-900);">${p.title}</div>
-          <div style="font-size: 0.75rem; color: var(--slate-400); font-family: var(--font-mono);">${p.ref}</div>
+          <div style="font-weight: 700; color: var(--slate-900); font-size: 0.9rem;">${p.title}</div>
+          <div style="font-size: 0.75rem; color: var(--slate-400); font-family: monospace;">${p.ref}</div>
         </td>
         <td>
-          <span class="modal-category-badge">${p.category}</span>
-        </td>
-        <td style="font-weight: 800; color: var(--blue-900); font-family: var(--font-display);">
-          ${store.formatPrice(p.price)}
-          ${p.originalPrice ? `<div style="font-size: 0.75rem; color: var(--slate-400); text-decoration: line-through;">${store.formatPrice(p.originalPrice)}</div>` : ""}
+          <span class="card-category-tag">${p.category}</span>
         </td>
         <td>
-          <div style="margin-bottom: 3px;">${stockBadge}</div>
-          <div style="display: flex; flex-wrap: wrap; gap: 2px;">${sizesSummary}</div>
+          <div style="font-weight: 800; color: var(--blue-900);">${store.formatPrice(p.price)}</div>
+          ${p.flashSale ? `<span style="font-size: 0.7rem; color: #DC2626; font-weight: 800;">⚡ Vente Flash</span>` : ""}
         </td>
         <td>
-          <span style="font-size: 0.75rem; background: var(--blue-50); color: var(--blue-700); padding: 2px 6px; border-radius: 4px; font-weight: 600;">
-            ${p.badge || "Standard"}
-          </span>
+          <div>${sizesSummary}</div>
+          <div style="font-size: 0.75rem; font-weight: 700; color: ${p.totalStock > 0 ? 'var(--success-emerald)' : 'var(--danger-crimson)'}; margin-top: 4px;">
+            Total : ${p.totalStock} unité(s)
+          </div>
+        </td>
+        <td>
+          <span class="card-badge badge-${(p.badge || 'aucun').toLowerCase()}" style="position: static; display: inline-block;">${p.badge || 'Aucun'}</span>
         </td>
         <td style="text-align: right; white-space: nowrap;">
-          <button class="table-action-btn table-action-edit btn-edit-product" data-id="${p.id}" title="Modifier">
-            Modifier
-          </button>
-          <button class="table-action-btn table-action-del btn-del-product" data-id="${p.id}" title="Supprimer" style="margin-left: 4px;">
-            Supprimer
-          </button>
+          <button type="button" class="action-btn action-btn-secondary btn-edit-p" data-id="${p.id}" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px;">Modifier</button>
+          <button type="button" class="action-btn action-btn-secondary btn-del-p" data-id="${p.id}" style="padding: 4px 8px; font-size: 0.8rem; color: var(--danger-crimson);">Suppr.</button>
         </td>
       `;
 
-      tr.querySelector(".btn-edit-product").addEventListener("click", () => this.editProduct(p.id));
-      tr.querySelector(".btn-del-product").addEventListener("click", () => {
-        if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement "${p.title}" ?`)) {
+      tr.querySelector(".btn-edit-p").addEventListener("click", () => this.editProduct(p.id));
+      tr.querySelector(".btn-del-p").addEventListener("click", () => {
+        if (confirm(`Supprimer définitivement "${p.title}" ?`)) {
           store.deleteProduct(p.id);
           this.renderAdminProductsTable();
           this.updateStats();
@@ -642,9 +837,11 @@ class AdminController {
     });
   }
 
+  // --- RENDU COMMANDES ---
   renderAdminOrdersTable() {
     if (!this.adminOrdersTableBody) return;
     const orders = store.getOrders();
+    this.adminOrdersTableBody.innerHTML = "";
 
     if (orders.length === 0) {
       this.adminOrdersTableBody.innerHTML = `
@@ -657,56 +854,111 @@ class AdminController {
       return;
     }
 
-    this.adminOrdersTableBody.innerHTML = "";
-
-    orders.forEach(order => {
+    orders.forEach(ord => {
       const tr = document.createElement("tr");
-      const itemsDesc = order.items.map(it => {
-        const sz = it.size ? ` (Taille ${it.size})` : "";
-        return `${it.quantity}x ${it.title}${sz}`;
-      }).join(", ");
+      const itemsList = ord.items.map(it => `${it.quantity}x ${it.title} ${it.size ? `(${it.size})` : ""}`).join("<br>");
 
       tr.innerHTML = `
-        <td style="font-family: var(--font-mono); font-weight: 700; color: var(--blue-900);">${order.id}</td>
-        <td style="font-size: 0.8rem; color: var(--slate-500);">${order.date}</td>
+        <td style="font-weight: 700; font-family: monospace;">${ord.id}</td>
+        <td style="font-size: 0.825rem; color: var(--slate-600);">${ord.date}</td>
         <td>
-          <div style="font-weight: 700;">${order.customerName}</div>
-          <div style="font-size: 0.75rem; color: var(--slate-500);">${order.customerPhone}</div>
-          <div style="font-size: 0.72rem; color: var(--blue-700);">${order.district}</div>
+          <div style="font-weight: 700;">${ord.customerName}</div>
+          <div style="font-size: 0.75rem; color: var(--slate-500);">${ord.district} • ${ord.customerPhone}</div>
         </td>
-        <td style="font-size: 0.8rem; max-width: 250px; line-height: 1.3;">${itemsDesc}</td>
-        <td style="font-weight: 800; color: var(--blue-900); font-family: var(--font-display);">${store.formatPrice(order.total)}</td>
+        <td style="font-size: 0.825rem;">${itemsList}</td>
+        <td style="font-weight: 800; color: var(--blue-900);">${store.formatPrice(ord.total)}</td>
         <td>
-          <select class="catalog-select order-status-select" data-id="${order.id}" style="font-size: 0.75rem; padding: 2px 20px 2px 6px;">
-            <option value="Envoyé sur WhatsApp" ${order.status === "Envoyé sur WhatsApp" ? "selected" : ""}>Envoyé sur WhatsApp</option>
-            <option value="En cours" ${order.status === "En cours" ? "selected" : ""}>En cours</option>
-            <option value="Livré" ${order.status === "Livré" ? "selected" : ""}>Livré</option>
-            <option value="Annulé" ${order.status === "Annulé" ? "selected" : ""}>Annulé</option>
-          </select>
+          <span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; background: #DEF7EC; color: #03543F;">
+            ${ord.status}
+          </span>
         </td>
       `;
-
-      tr.querySelector(".order-status-select").addEventListener("change", (e) => {
-        store.updateOrderStatus(order.id, e.target.value);
-      });
-
       this.adminOrdersTableBody.appendChild(tr);
     });
   }
 
-  exportCatalogJson() {
+  // --- SUPABASE CLOUD SYNC ---
+  loadSupabaseForm() {
+    if (!window.supabaseService) return;
+    const cfg = window.supabaseService.getConfig();
+    if (cfg) {
+      if (this.supabaseUrlInput) this.supabaseUrlInput.value = cfg.url || "";
+      if (this.supabaseKeyInput) this.supabaseKeyInput.value = cfg.anonKey || "";
+      this.setSupabaseStatus(true, "Supabase est configuré sur cet appareil.");
+    } else {
+      this.setSupabaseStatus(false, "Supabase n'est pas encore connecté.");
+    }
+  }
+
+  saveSupabaseConfig() {
+    const url = this.supabaseUrlInput?.value.trim();
+    const key = this.supabaseKeyInput?.value.trim();
+
+    if (!url || !key) {
+      alert("Veuillez renseigner l'URL Supabase et la clé Anon.");
+      return;
+    }
+
+    const ok = window.supabaseService.configure(url, key);
+    if (ok) {
+      this.setSupabaseStatus(true, "Configuration Supabase sauvegardée avec succès !");
+      store.syncFromSupabase();
+    } else {
+      this.setSupabaseStatus(false, "Erreur d'initialisation Supabase.");
+    }
+  }
+
+  async testSupabaseConnection() {
+    this.setSupabaseStatus(null, "Test de connexion en cours...");
+    const res = await window.supabaseService.testConnection();
+    this.setSupabaseStatus(res.success, res.message);
+  }
+
+  async syncAllToSupabase() {
+    if (!window.supabaseService.isConfigured) {
+      alert("Veuillez d'abord configurer et tester votre connexion Supabase.");
+      return;
+    }
     const products = store.getProducts();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `djibshop_catalog_${new Date().toISOString().split("T")[0]}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    const ok = await window.supabaseService.syncAllToSupabase(products);
+    if (ok) {
+      alert(`Synchronisation terminée : ${products.length} article(s) envoyés dans votre base cloud Supabase !`);
+    } else {
+      alert("Erreur lors de la synchronisation Supabase.");
+    }
+  }
+
+  setSupabaseStatus(isOk, text) {
+    if (!this.supabaseStatusAlert) return;
+    this.supabaseStatusAlert.style.display = "block";
+    if (isOk === true) {
+      this.supabaseStatusAlert.style.background = "#DEF7EC";
+      this.supabaseStatusAlert.style.color = "#03543F";
+      this.supabaseStatusAlert.style.borderColor = "#31C48D";
+    } else if (isOk === false) {
+      this.supabaseStatusAlert.style.background = "#FDE8E8";
+      this.supabaseStatusAlert.style.color = "#9B1C1C";
+      this.supabaseStatusAlert.style.borderColor = "#F98080";
+    } else {
+      this.supabaseStatusAlert.style.background = "#E1EFFE";
+      this.supabaseStatusAlert.style.color = "#1E429F";
+      this.supabaseStatusAlert.style.borderColor = "#76A9FA";
+    }
+    this.supabaseStatusAlert.textContent = text;
+  }
+
+  exportCatalogJson() {
+    const data = store.getProducts();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `djibshop-catalogue-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
 
-// Initialisation au chargement de admin.html
 document.addEventListener("DOMContentLoaded", () => {
-  window.adminCtrl = new AdminController();
+  window.adminApp = new AdminApp();
 });

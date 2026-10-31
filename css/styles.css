@@ -659,43 +659,76 @@ a {
   box-shadow: var(--shadow-lg);
 }
 
-/* Cadre Studio Fond Blanc Shein / Alibaba */
+/* Cadre Studio Fond Blanc / Doux Shein & Alibaba */
 .card-media-wrapper {
   position: relative;
-  aspect-ratio: 1 / 1.08;
+  aspect-ratio: 1 / 1.05;
   overflow: hidden;
-  background: #FFFFFF !important;
+  background: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 10px;
   border-bottom: 1px solid var(--slate-100);
 }
 
 .product-card-img {
   width: 100%;
   height: 100%;
-  max-height: 230px;
+  max-height: 200px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.05));
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.06));
   transition: transform 0.35s ease;
 }
 
 .product-card:hover .product-card-img {
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 
 .card-badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  font-size: 0.6875rem;
+  top: 8px;
+  left: 8px;
+  font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
-  padding: 0.25rem 0.6rem;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--radius-full);
   letter-spacing: 0.05em;
   z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.badge-flash-sale {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  color: #FFFFFF;
+  animation: pulseFlash 1.8s infinite;
+}
+
+@keyframes pulseFlash {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* Barre de Timer Vente Flash sur la carte */
+.card-flash-timer-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(220, 38, 38, 0.92);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 3px 6px;
+  z-index: 3;
+  letter-spacing: 0.02em;
 }
 
 .badge-promo {
@@ -2156,22 +2189,121 @@ a {
   }
 }
 
-/* Mobiles (max 480px) */
+/* Mobiles (max 480px) - Shein & Alibaba 2-column mobile experience */
 @media (max-width: 480px) {
   .header-search {
     display: none;
   }
   .hero-banner {
-    padding: 1.75rem 0;
+    padding: 1.25rem 0;
   }
   .hero-title {
-    font-size: 1.65rem;
+    font-size: 1.4rem;
   }
   .hero-action-box {
-    padding: 1.25rem;
+    padding: 1rem;
   }
+  /* Cartes 2 colonnes comme Shein et Alibaba */
   .products-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 2rem;
+  }
+  .card-media-wrapper {
+    padding: 6px !important;
+    aspect-ratio: 1 / 1.05;
+  }
+  .product-card-img {
+    max-height: 140px !important;
+  }
+  .card-content {
+    padding: 0.5rem !important;
+  }
+  .card-title {
+    font-size: 0.775rem !important;
+    line-height: 1.25 !important;
+    max-height: 2.5em;
+    overflow: hidden;
+    margin-bottom: 0.35rem;
+  }
+  .current-price {
+    font-size: 0.95rem !important;
+  }
+  .original-price {
+    font-size: 0.75rem !important;
+  }
+  .card-sizes-pill-list {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 0.35rem;
+  }
+  .size-mini-tag {
+    font-size: 0.6rem !important;
+    padding: 1px 4px !important;
+  }
+  .card-actions-row {
+    margin-top: 0.35rem !important;
+  }
+  .btn-card-order-wa {
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  .btn-card-order-wa span {
+    display: none !important;
+  }
+  .btn-card-add-cart {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .card-wish-btn {
+    width: 26px !important;
+    height: 26px !important;
+    top: 6px !important;
+    right: 6px !important;
+  }
+  .card-badge {
+    top: 6px !important;
+    left: 6px !important;
+    font-size: 0.55rem !important;
+    padding: 0.15rem 0.4rem !important;
+  }
+  .card-flash-timer-bar {
+    font-size: 0.6rem !important;
+    padding: 2px 4px !important;
+  }
+
+  /* Admin sur petit écran mobile */
+  .admin-header-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.85rem !important;
+    gap: 0.6rem;
+  }
+  .admin-nav-tabs {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    display: flex;
+  }
+  .admin-tab-btn {
+    padding: 0.4rem 0.7rem !important;
+    font-size: 0.75rem !important;
+  }
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem !important;
+  }
+  .stat-card {
+    padding: 0.75rem !important;
+  }
+  .stat-value {
+    font-size: 1.15rem !important;
+  }
+  .stat-label {
+    font-size: 0.7rem !important;
+  }
+  .desktop-only {
+    display: none !important;
   }
   .catalog-controls-bar {
     flex-direction: column;
@@ -2188,3 +2320,238 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* Styles pour les options de fond direct, timer et tailles administrables */
+.bg-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.bg-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--white);
+  border: 1.5px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.775rem;
+  font-weight: 700;
+  color: var(--slate-700);
+  transition: all var(--transition-fast);
+}
+
+.bg-choice-card.active {
+  border-color: var(--blue-600);
+  background: var(--blue-50);
+  color: var(--blue-900);
+}
+
+.bg-preview-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.flash-sale-config-box {
+  background: #FFF1F2;
+  border: 1.5px solid #FECDD3;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.modal-flash-sale-badge {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  color: #FFFFFF;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.775rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.modal-flash-timer {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  font-family: monospace;
+}
+
+/* Grille de configuration des tailles dans l'admin */
+.sizes-stock-grid-advanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.size-config-card {
+  background: var(--slate-50);
+  border: 1.5px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 0.65rem;
+  transition: all var(--transition-fast);
+}
+
+.size-config-card.active {
+  background: var(--white);
+  border-color: var(--blue-600);
+  box-shadow: var(--shadow-xs);
+}
+
+.size-config-header {
+  margin-bottom: 0.5rem;
+}
+
+.size-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.size-name-badge {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--slate-900);
+}
+
+.size-config-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.size-input-field label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--slate-500);
+  margin-bottom: 1px;
+  display: block;
+}
+
+.size-input-field input {
+  padding: 0.25rem 0.45rem;
+  font-size: 0.775rem;
+  height: 28px;
+}
+
+/* Galerie 1 à 4 dans admin */
+.studio-photo-box {
+  background: var(--slate-50);
+  border: 1.5px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-images-preview-container {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-img-preview-card {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--slate-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.admin-img-preview-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.del-img-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  border: none;
+}
+
+.img-badge-order {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: var(--blue-700);
+  color: white;
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+/* Modal taille avec prix dynamique */
+.size-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.65rem;
+  border: 1.5px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  cursor: pointer;
+  min-width: 60px;
+  transition: all var(--transition-fast);
+}
+
+.size-choice-btn.selected {
+  border-color: var(--blue-700);
+  background: var(--blue-50);
+  box-shadow: 0 0 0 2px var(--blue-200);
+}
+
+.size-choice-btn.out-of-stock {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--slate-100);
+}
+
+.size-name {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--slate-900);
+}
+
+.size-price-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--blue-700);
+  margin-top: 1px;
+}
+
+.size-badge-sub {
+  font-size: 0.625rem;
+  color: var(--slate-500);
+}
+
