@@ -62,6 +62,8 @@ class ClientApp {
     this.modalQtyPlus = document.getElementById("modal-qty-plus");
     this.modalDirectWaBtn = document.getElementById("modal-btn-direct-wa");
     this.modalAddToCartBtn = document.getElementById("modal-btn-add-cart");
+    this.modalWaAppToggle = document.getElementById("modal-wa-app-toggle");
+    this.modalBtnWaLabel = document.getElementById("modal-btn-wa-label");
 
     // Tiroir Panier (Cart Drawer)
     this.cartDrawerBackdrop = document.getElementById("cart-drawer-backdrop");
@@ -72,6 +74,8 @@ class ClientApp {
     this.headerCartBtn = document.getElementById("header-cart-toggle-btn");
     this.floatingCartBtn = document.getElementById("floating-mobile-cart-btn");
     this.cartCheckoutWaBtn = document.getElementById("cart-btn-checkout-wa");
+    this.cartWaAppToggle = document.getElementById("cart-wa-app-toggle");
+    this.cartBtnWaLabel = document.getElementById("cart-btn-wa-label");
     this.cartCustomerName = document.getElementById("cart-customer-name");
     this.cartCustomerDistrict = document.getElementById("cart-customer-district");
     this.cartCustomerPhone = document.getElementById("cart-customer-phone");
@@ -213,6 +217,41 @@ class ClientApp {
         store.openWhatsApp("Bonjour DjibSHOP ! Je souhaite contacter votre équipe.");
       });
     });
+
+    // Bascule et synchronisation WhatsApp Business / WhatsApp Normal
+    const setupWaToggle = (container) => {
+      if (!container) return;
+      container.querySelectorAll(".wa-toggle-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+          const app = pill.dataset.app;
+          store.setPreferredWhatsAppApp(app);
+        });
+      });
+    };
+    setupWaToggle(this.modalWaAppToggle);
+    setupWaToggle(this.cartWaAppToggle);
+
+    const syncWaAppDisplay = (appType) => {
+      const isBiz = (appType === "business");
+      document.querySelectorAll(".wa-pill-toggle").forEach(toggle => {
+        toggle.querySelectorAll(".wa-toggle-pill").forEach(p => {
+          p.classList.toggle("active", p.dataset.app === appType);
+        });
+      });
+      if (this.modalBtnWaLabel) {
+        this.modalBtnWaLabel.textContent = isBiz ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp Normal";
+      }
+      if (this.cartBtnWaLabel) {
+        this.cartBtnWaLabel.textContent = isBiz ? "Finaliser sur WhatsApp Business" : "Finaliser sur WhatsApp Normal";
+      }
+      this.updateModalWhatsAppHref();
+    };
+
+    window.addEventListener("wa-pref-changed", (e) => {
+      syncWaAppDisplay(e.detail);
+    });
+
+    syncWaAppDisplay(store.getPreferredWhatsAppApp());
   }
 
   // --- COMPTE À REBOURS VENTES FLASH ---
@@ -719,7 +758,11 @@ class ClientApp {
       this.modalQuantity,
       this.selectedModalPrice
     );
-    this.modalDirectWaBtn.href = store.getWhatsAppUrl(message);
+    const pref = store.getPreferredWhatsAppApp();
+    this.modalDirectWaBtn.href = store.getWhatsAppUrl(message, pref);
+    if (this.modalBtnWaLabel) {
+      this.modalBtnWaLabel.textContent = (pref === "business") ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp Normal";
+    }
   }
 
   orderCurrentModalViaWhatsApp() {

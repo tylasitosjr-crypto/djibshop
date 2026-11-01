@@ -469,8 +469,18 @@ class Store {
     return message;
   }
 
-  // Génère l'URL WhatsApp optimale selon le système d'exploitation du client
-  getWhatsAppUrl(message) {
+  // Gestion de l'application préférée (WhatsApp Business ou Normal)
+  getPreferredWhatsAppApp() {
+    return localStorage.getItem("djibshop_wa_app") || "business";
+  }
+
+  setPreferredWhatsAppApp(appType) {
+    localStorage.setItem("djibshop_wa_app", appType);
+    window.dispatchEvent(new CustomEvent("wa-pref-changed", { detail: appType }));
+  }
+
+  // Génère l'URL WhatsApp optimale selon le système d'exploitation et l'application choisie (Business ou Normal)
+  getWhatsAppUrl(message, appType = null) {
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
@@ -479,9 +489,12 @@ class Store {
     const isIOS = /iPhone|iPad|iPod/i.test(ua);
     const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || window.innerWidth <= 800;
 
+    const chosenApp = appType || this.getPreferredWhatsAppApp();
+
     if (isAndroid) {
-      // Android Intent officiel : lance l'application WhatsApp directement sans passer par api.whatsapp.com
-      return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;S.browser_fallback_url=https%3A%2F%2Fwa.me%2F${phone}%3Ftext%3D${encoded};end`;
+      // Cible spécifiquement WhatsApp Business (com.whatsapp.w4b) ou WhatsApp Normal (com.whatsapp)
+      const pkg = (chosenApp === "normal") ? "com.whatsapp" : "com.whatsapp.w4b";
+      return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;package=${pkg};S.browser_fallback_url=https%3A%2F%2Fwa.me%2F${phone}%3Ftext%3D${encoded};end;`;
     } else if (isIOS) {
       // iPhone / iPad : schéma direct de l'application
       return `whatsapp://send?phone=${phone}&text=${encoded}`;
@@ -494,8 +507,8 @@ class Store {
   }
 
   // Ouvre instantanément WhatsApp du vendeur sans passer par les détours ou api.whatsapp
-  openWhatsApp(message) {
-    const targetUrl = this.getWhatsAppUrl(message);
+  openWhatsApp(message, appType = null) {
+    const targetUrl = this.getWhatsAppUrl(message, appType);
     const ua = navigator.userAgent || "";
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
       || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -527,14 +540,14 @@ class Store {
     }, 800);
   }
 
-  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null) {
+  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null, appType = null) {
     const message = this.buildDirectOrderMessage(product, size, quantity, customPrice);
-    return this.getWhatsAppUrl(message);
+    return this.getWhatsAppUrl(message, appType);
   }
 
-  generateCartWhatsAppLink(customerInfo, cartItems, totalAmount) {
+  generateCartWhatsAppLink(customerInfo, cartItems, totalAmount, appType = null) {
     const message = this.buildCartOrderMessage(customerInfo, cartItems, totalAmount);
-    return this.getWhatsAppUrl(message);
+    return this.getWhatsAppUrl(message, appType);
   }
 }
 
