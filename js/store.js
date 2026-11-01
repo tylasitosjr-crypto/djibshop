@@ -425,9 +425,7 @@ class Store {
     return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " FDJ";
   }
 
-  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null) {
-    const settings = this.getSettings();
-    const phone = settings.whatsappCleanNumber || "25377078793";
+  buildDirectOrderMessage(product, size = null, quantity = 1, customPrice = null) {
     const priceToUse = customPrice || product.price;
 
     let message = `Bonjour DjibSHOP ! 👋\n`;
@@ -440,20 +438,17 @@ class Store {
     message += `🔢 *Quantité :* ${quantity}\n`;
     message += `💰 *Prix unitaire :* ${this.formatPrice(priceToUse)}\n`;
     message += `💵 *Total :* ${this.formatPrice(priceToUse * quantity)}\n\n`;
-    message += `Pouvez-vous me confirmer la disponibilité et les modalités de livraison à Djibouti ? Merci !`;
+    message += `Pouvez-vous me confirmer la disponibilité et la livraison à Djibouti ? Merci !`;
 
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return message;
   }
 
-  generateCartWhatsAppLink(customerInfo, cartItems, totalAmount) {
-    const settings = this.getSettings();
-    const phone = settings.whatsappCleanNumber || "25377078793";
-
+  buildCartOrderMessage(customerInfo, cartItems, totalAmount) {
     let message = `*NOUVELLE COMMANDE DJIBHOP* 🛍️\n`;
     message += `==============================\n\n`;
 
-    if (customerInfo) {
-      message += `👤 *Client :* ${customerInfo.name || "Non renseigné"}\n`;
+    if (customerInfo && (customerInfo.name || customerInfo.district || customerInfo.phone)) {
+      message += `👤 *Client :* ${customerInfo.name || "Client"}\n`;
       message += `📍 *Adresse / Quartier :* ${customerInfo.district || "Djibouti"}\n`;
       message += `📞 *Téléphone / WhatsApp :* ${customerInfo.phone || "Non renseigné"}\n\n`;
     }
@@ -471,7 +466,46 @@ class Store {
     message += `🚚 *Paiement :* À la livraison à Djibouti\n\n`;
     message += `Merci de traiter ma commande dans les plus brefs délais !`;
 
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return message;
+  }
+
+  // Ouvre instantanément l'application WhatsApp sans passer par la page intermédiaire de wa.me
+  openWhatsApp(message) {
+    const settings = this.getSettings();
+    const phone = settings.whatsappCleanNumber || "25377078793";
+    const encoded = encodeURIComponent(message);
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // 1. Sur Mobile : Schéma d'application direct WhatsApp (zéro page web intermédiaire)
+      const nativeUrl = `whatsapp://send?phone=${phone}&text=${encoded}`;
+      const webFallback = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
+
+      // Tente d'ouvrir directement l'application WhatsApp
+      window.location.href = nativeUrl;
+
+      // Fallback automatique si WhatsApp n'est pas installé
+      setTimeout(() => {
+        window.location.href = webFallback;
+      }, 1500);
+    } else {
+      // 2. Sur Ordinateur : API WhatsApp Web directe
+      window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`, "_blank");
+    }
+  }
+
+  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null) {
+    const settings = this.getSettings();
+    const phone = settings.whatsappCleanNumber || "25377078793";
+    const message = this.buildDirectOrderMessage(product, size, quantity, customPrice);
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  }
+
+  generateCartWhatsAppLink(customerInfo, cartItems, totalAmount) {
+    const settings = this.getSettings();
+    const phone = settings.whatsappCleanNumber || "25377078793";
+    const message = this.buildCartOrderMessage(customerInfo, cartItems, totalAmount);
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
   }
 }
 

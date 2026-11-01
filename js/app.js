@@ -410,11 +410,18 @@ class ClientApp {
       this.openProductModal(product);
     });
 
-    // Clic rapide WhatsApp
+    // Clic rapide WhatsApp direct (1 clic instantané pour articles sans tailles)
     const quickWaBtn = card.querySelector(".btn-quick-wa");
     quickWaBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.openProductModal(product);
+      const hasSizes = product.sizes && typeof product.sizes === "object" && Object.keys(product.sizes).length > 0;
+      if (!hasSizes) {
+        // Redirection directe instantanée sans étape intermédiaire
+        const message = store.buildDirectOrderMessage(product, null, 1, product.price);
+        store.openWhatsApp(message);
+      } else {
+        this.openProductModal(product);
+      }
     });
 
     // Clic rapide Panier
@@ -632,13 +639,13 @@ class ClientApp {
       return;
     }
 
-    const url = store.generateDirectWhatsAppLink(
+    const message = store.buildDirectOrderMessage(
       this.activeProductModal, 
       this.selectedModalSize, 
       this.modalQuantity,
       this.selectedModalPrice
     );
-    window.open(url, "_blank");
+    store.openWhatsApp(message);
   }
 
   addCurrentModalToCart() {
@@ -789,8 +796,8 @@ class ClientApp {
 
     store.createOrder(customerInfo, cart, total);
 
-    const url = store.generateCartWhatsAppLink(customerInfo, cart, total);
-    window.open(url, "_blank");
+    const message = store.buildCartOrderMessage(customerInfo, cart, total);
+    store.openWhatsApp(message);
 
     store.clearCart();
     this.closeCartDrawer();
