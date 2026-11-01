@@ -536,6 +536,8 @@ a {
   font-size: 0.95rem;
   padding: 0.85rem 1.25rem;
   border-radius: var(--radius-md);
+  text-decoration: none;
+  cursor: pointer;
   transition: all var(--transition-fast);
   box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
 }
@@ -1315,6 +1317,8 @@ a {
   font-weight: 800;
   padding: 0.95rem 1.5rem;
   border-radius: var(--radius-md);
+  text-decoration: none;
+  cursor: pointer;
   transition: all var(--transition-fast);
   box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);
 }

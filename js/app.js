@@ -146,7 +146,10 @@ class ClientApp {
 
     // Boutons de commande de la modal
     if (this.modalDirectWaBtn) {
-      this.modalDirectWaBtn.addEventListener("click", () => this.orderCurrentModalViaWhatsApp());
+      this.modalDirectWaBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.orderCurrentModalViaWhatsApp();
+      });
     }
     if (this.modalAddToCartBtn) {
       this.modalAddToCartBtn.addEventListener("click", () => this.addCurrentModalToCart());
@@ -168,7 +171,10 @@ class ClientApp {
       });
     }
     if (this.cartCheckoutWaBtn) {
-      this.cartCheckoutWaBtn.addEventListener("click", () => this.checkoutCartViaWhatsApp());
+      this.cartCheckoutWaBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.checkoutCartViaWhatsApp();
+      });
     }
 
     // Mises à jour du panier
@@ -192,21 +198,19 @@ class ClientApp {
       }
     });
 
-    // Interception transparente des liens whatsapp:// sur ordinateur (ouvre WhatsApp Web direct)
-    document.querySelectorAll('a[href^="whatsapp://"]').forEach(link => {
+    // Interception universelle des boutons et liens WhatsApp pour garantir l'ouverture native
+    const heroBtn = document.getElementById("hero-wa-btn");
+    if (heroBtn) {
+      heroBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        store.openWhatsApp("Bonjour DjibSHOP ! Je souhaite me renseigner sur vos articles disponibles.");
+      });
+    }
+
+    document.querySelectorAll(".announcement-link, .footer-wa-link, [data-wa-direct]").forEach(link => {
       link.addEventListener("click", (e) => {
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-          || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-          || window.innerWidth <= 800;
-        if (!isMobile) {
-          e.preventDefault();
-          const href = link.getAttribute("href") || "";
-          const queryPart = href.split("?")[1] || "";
-          const params = new URLSearchParams(queryPart);
-          const phone = params.get("phone") || "25377078793";
-          const text = params.get("text") || "";
-          window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, "_blank");
-        }
+        e.preventDefault();
+        store.openWhatsApp("Bonjour DjibSHOP ! Je souhaite contacter votre équipe.");
       });
     });
   }
@@ -591,6 +595,9 @@ class ClientApp {
     // Rendu des Tailles avec Prix Dynamique
     this.renderModalSizeSelector(product);
 
+    // Mettre à jour l'URL WhatsApp du bouton modal
+    this.updateModalWhatsAppHref();
+
     // Afficher la modal
     this.productModalBackdrop.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -657,6 +664,7 @@ class ClientApp {
 
           this.modalQuantity = 1;
           this.modalQtyInput.value = 1;
+          this.updateModalWhatsAppHref();
         });
       });
 
@@ -676,6 +684,7 @@ class ClientApp {
           </span>
         </div>
       `;
+      this.updateModalWhatsAppHref();
     }
   }
 
@@ -696,9 +705,21 @@ class ClientApp {
     if (nextVal >= 1 && nextVal <= maxStock) {
       this.modalQuantity = nextVal;
       this.modalQtyInput.value = nextVal;
+      this.updateModalWhatsAppHref();
     } else if (nextVal > maxStock) {
       window.showToast(`Stock maximal atteint (${maxStock} unités)`, "warning");
     }
+  }
+
+  updateModalWhatsAppHref() {
+    if (!this.activeProductModal || !this.modalDirectWaBtn) return;
+    const message = store.buildDirectOrderMessage(
+      this.activeProductModal,
+      this.selectedModalSize,
+      this.modalQuantity,
+      this.selectedModalPrice
+    );
+    this.modalDirectWaBtn.href = store.getWhatsAppUrl(message);
   }
 
   orderCurrentModalViaWhatsApp() {
@@ -706,8 +727,16 @@ class ClientApp {
 
     const hasSizes = this.activeProductModal.sizes && Object.keys(this.activeProductModal.sizes).length > 0;
     if (hasSizes && !this.selectedModalSize) {
-      window.showToast("Veuillez choisir une taille ou pointure avant de commander", "warning");
-      return;
+      // Sélectionne automatiquement la première taille disponible au lieu de bloquer l'achat
+      const firstAvailable = Object.keys(this.activeProductModal.sizes).find(k => {
+        const v = this.activeProductModal.sizes[k];
+        const stock = typeof v === "object" ? v.stock : v;
+        return stock > 0;
+      }) || Object.keys(this.activeProductModal.sizes)[0];
+
+      this.selectedModalSize = firstAvailable;
+      const sizeVal = this.activeProductModal.sizes[firstAvailable];
+      this.selectedModalPrice = typeof sizeVal === "object" && sizeVal.price ? sizeVal.price : this.activeProductModal.price;
     }
 
     const message = store.buildDirectOrderMessage(

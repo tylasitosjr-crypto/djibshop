@@ -469,41 +469,72 @@ class Store {
     return message;
   }
 
-  // Ouvre instantanément WhatsApp du vendeur sans passer par les détours ou api.whatsapp
-  openWhatsApp(message) {
+  // Génère l'URL WhatsApp optimale selon le système d'exploitation du client
+  getWhatsAppUrl(message) {
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-      || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-      || window.innerWidth <= 800;
+    const ua = navigator.userAgent || "";
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || window.innerWidth <= 800;
 
-    if (isMobile) {
-      // 1. Sur Mobile : Ouverture directe de l'application WhatsApp du téléphone (zéro page web api.whatsapp)
-      window.location.href = `whatsapp://send?phone=${phone}&text=${encoded}`;
+    if (isAndroid) {
+      // Android Intent officiel : lance l'application WhatsApp directement sans passer par api.whatsapp.com
+      return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;S.browser_fallback_url=https%3A%2F%2Fwa.me%2F${phone}%3Ftext%3D${encoded};end`;
+    } else if (isIOS) {
+      // iPhone / iPad : schéma direct de l'application
+      return `whatsapp://send?phone=${phone}&text=${encoded}`;
+    } else if (isMobile) {
+      return `https://wa.me/${phone}?text=${encoded}`;
     } else {
-      // 2. Sur Ordinateur : WhatsApp Web direct dans la discussion (sans page de blocage)
-      const webUrl = `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
-      window.open(webUrl, "_blank");
+      // Ordinateur : WhatsApp Web direct dans la conversation
+      return `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
     }
   }
 
-  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null) {
+  // Ouvre instantanément WhatsApp du vendeur sans passer par les détours ou api.whatsapp
+  openWhatsApp(message) {
+    const targetUrl = this.getWhatsAppUrl(message);
+    const ua = navigator.userAgent || "";
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+      || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+      || window.innerWidth <= 800;
+
+    if (!isMobile) {
+      window.open(targetUrl, "_blank");
+      return;
+    }
+
+    // Déclenchement par un lien natif invisible cliqué pour respecter les règles de sécurité Chrome Android et iOS
+    const link = document.createElement("a");
+    link.href = targetUrl;
+    link.target = "_self";
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+    }, 150);
+
+    // Fallback de sécurité : si après 800ms l'application n'est pas passée au premier plan
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
-    const message = this.buildDirectOrderMessage(product, size, quantity, customPrice);
     const encoded = encodeURIComponent(message);
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 800;
-    return isMobile ? `whatsapp://send?phone=${phone}&text=${encoded}` : `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
+    setTimeout(() => {
+      if (document.visibilityState === "visible") {
+        window.location.href = `https://wa.me/${phone}?text=${encoded}`;
+      }
+    }, 800);
+  }
+
+  generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null) {
+    const message = this.buildDirectOrderMessage(product, size, quantity, customPrice);
+    return this.getWhatsAppUrl(message);
   }
 
   generateCartWhatsAppLink(customerInfo, cartItems, totalAmount) {
-    const settings = this.getSettings();
-    const phone = settings.whatsappCleanNumber || "25377078793";
     const message = this.buildCartOrderMessage(customerInfo, cartItems, totalAmount);
-    const encoded = encodeURIComponent(message);
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 800;
-    return isMobile ? `whatsapp://send?phone=${phone}&text=${encoded}` : `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
+    return this.getWhatsAppUrl(message);
   }
 }
 
