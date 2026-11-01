@@ -23,7 +23,7 @@
       </div>
       <div class="announcement-item">
         <span>Assistance & Commande WhatsApp :</span>
-        <a href="https://wa.me/25377078793" target="_blank" rel="noopener" class="announcement-link">
+        <a href="whatsapp://send?phone=25377078793" class="announcement-link">
           +253 77 07 87 93
         </a>
       </div>
@@ -140,7 +140,7 @@
         <div class="hero-action-box">
           <div class="hero-action-header">Commande WhatsApp Directe</div>
           <p class="hero-action-desc">Discutez directement avec un conseiller DjibSHOP pour vos commandes, questions sur les pointures ou livraisons express.</p>
-          <a href="https://wa.me/25377078793?text=Bonjour%20DjibSHOP%20!%20Je%20souhaite%20me%20renseigner%20sur%20vos%20articles%20disponibles." target="_blank" rel="noopener" class="whatsapp-direct-btn">
+          <a href="whatsapp://send?phone=25377078793&text=Bonjour%20DjibSHOP%20!%20Je%20souhaite%20me%20renseigner%20sur%20vos%20articles%20disponibles." class="whatsapp-direct-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/>
             </svg>
@@ -172,6 +172,43 @@
             <input type="checkbox" id="filter-in-stock-only">
             <span>En stock uniquement</span>
           </label>
+        </div>
+      </div>
+
+      <!-- SECTION VENTES FLASH DU JOUR (Style Shein & Alibaba en haut) -->
+      <section id="flash-sale-showcase-section" class="flash-sale-showcase-container" style="display: none;">
+        <div class="flash-showcase-header">
+          <div class="flash-header-title-wrap">
+            <div class="flash-bolt-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flash-main-title">VENTES FLASH DU JOUR ⚡</div>
+              <div class="flash-sub-title">Offres spéciales à durée limitée • Jusqu'à épuisement du stock</div>
+            </div>
+          </div>
+
+          <div class="flash-countdown-pill">
+            <span class="flash-pill-label">SE TERMINE DANS :</span>
+            <span class="flash-pill-timer flash-timer-display" id="showcase-flash-timer" data-end="">--:--:--</span>
+          </div>
+        </div>
+
+        <!-- Grille des produits Flash séparés -->
+        <div class="products-grid flash-products-grid" id="flash-products-container">
+          <!-- Rempli dynamiquement par js/app.js -->
+        </div>
+      </section>
+
+      <!-- En-tête du catalogue standard -->
+      <div id="regular-catalog-title-bar" class="catalog-section-title-bar" style="margin-top: 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; color: var(--slate-900);">
+          Tous nos Articles
+        </div>
+        <div style="font-size: 0.8rem; font-weight: 600; color: var(--slate-500);">
+          Collection Prêt-à-porter
         </div>
       </div>
 
@@ -370,7 +407,7 @@
         <div>
           <div class="footer-heading">Service Client</div>
           <ul class="footer-links">
-            <li><a href="https://wa.me/25377078793" target="_blank" rel="noopener">Commander via WhatsApp</a></li>
+            <li><a href="whatsapp://send?phone=25377078793">Commander via WhatsApp</a></li>
             <li><a href="#">Zones de livraison à Djibouti</a></li>
             <li><a href="#">Guide des tailles & pointures</a></li>
             <li><a href="#">Suivi de commande direct</a></li>

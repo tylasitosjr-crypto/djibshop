@@ -30,6 +30,10 @@ class ClientApp {
   initElements() {
     // Éléments du Catalogue
     this.productsGrid = document.getElementById("products-grid-container");
+    this.flashShowcaseSection = document.getElementById("flash-sale-showcase-section");
+    this.flashProductsContainer = document.getElementById("flash-products-container");
+    this.showcaseFlashTimer = document.getElementById("showcase-flash-timer");
+    this.regularCatalogTitleBar = document.getElementById("regular-catalog-title-bar");
     this.catalogCountElem = document.getElementById("catalog-item-count");
     this.searchInput = document.getElementById("site-search-input");
     this.searchClearBtn = document.getElementById("site-search-clear");
@@ -187,6 +191,24 @@ class ClientApp {
         this.closeCartDrawer();
       }
     });
+
+    // Interception transparente des liens whatsapp:// sur ordinateur (ouvre WhatsApp Web direct)
+    document.querySelectorAll('a[href^="whatsapp://"]').forEach(link => {
+      link.addEventListener("click", (e) => {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+          || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+          || window.innerWidth <= 800;
+        if (!isMobile) {
+          e.preventDefault();
+          const href = link.getAttribute("href") || "";
+          const queryPart = href.split("?")[1] || "";
+          const params = new URLSearchParams(queryPart);
+          const phone = params.get("phone") || "25377078793";
+          const text = params.get("text") || "";
+          window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, "_blank");
+        }
+      });
+    });
   }
 
   // --- COMPTE À REBOURS VENTES FLASH ---
@@ -251,6 +273,9 @@ class ClientApp {
     }
 
     if (products.length === 0) {
+      if (this.flashShowcaseSection) this.flashShowcaseSection.style.display = "none";
+      if (this.regularCatalogTitleBar) this.regularCatalogTitleBar.style.display = "none";
+
       this.productsGrid.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--slate-200);">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--slate-400)" stroke-width="1.5" style="margin: 0 auto 1rem;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -276,9 +301,39 @@ class ClientApp {
       return;
     }
 
-    this.productsGrid.innerHTML = "";
+    // Séparation des produits Vente Flash en haut et Produits Réguliers en bas (Shein Style)
+    const flashProducts = products.filter(p => p.flashSale);
+    const regularProducts = products.filter(p => !p.flashSale);
 
-    products.forEach(product => {
+    // 1. Vitrine Ventes Flash du Jour en haut
+    if (this.flashShowcaseSection && this.flashProductsContainer) {
+      if (flashProducts.length > 0) {
+        this.flashShowcaseSection.style.display = "block";
+        this.flashProductsContainer.innerHTML = "";
+        flashProducts.forEach(prod => {
+          this.flashProductsContainer.appendChild(this.createProductCard(prod));
+        });
+
+        // Configurer le compte à rebours principal sur la fin la plus proche
+        if (this.showcaseFlashTimer) {
+          const nextEnding = flashProducts.find(p => p.flashSaleEnds)?.flashSaleEnds || new Date(Date.now() + 18 * 3600 * 1000).toISOString();
+          this.showcaseFlashTimer.dataset.end = nextEnding;
+        }
+
+        if (this.regularCatalogTitleBar) {
+          this.regularCatalogTitleBar.style.display = "flex";
+        }
+      } else {
+        this.flashShowcaseSection.style.display = "none";
+        if (this.regularCatalogTitleBar) {
+          this.regularCatalogTitleBar.style.display = "none";
+        }
+      }
+    }
+
+    // 2. Grille de tous les autres articles
+    this.productsGrid.innerHTML = "";
+    regularProducts.forEach(product => {
       const card = this.createProductCard(product);
       this.productsGrid.appendChild(card);
     });
@@ -358,6 +413,21 @@ class ClientApp {
       }
     }
 
+    // Urgence de stock Flash Sale (Shein Style)
+    let flashUrgencyHtml = "";
+    if (product.flashSale) {
+      flashUrgencyHtml = `
+        <div class="flash-stock-urgency">
+          <div class="flash-stock-bar-wrap">
+            <div class="flash-stock-bar-fill" style="width: 78%;"></div>
+          </div>
+          <div class="flash-stock-text">
+            <span>⚡ Vente Flash</span> • <span>Stock limité</span>
+          </div>
+        </div>
+      `;
+    }
+
     const isWishlisted = store.isInWishlist(product.id);
 
     // Structure de la carte compacte
@@ -382,6 +452,7 @@ class ClientApp {
         <div class="card-sizes-pill-list">
           ${sizesHtml}
         </div>
+        ${flashUrgencyHtml}
 
         <div class="card-price-row">
           <div class="price-wrap">

@@ -2555,3 +2555,162 @@ a {
   color: var(--slate-500);
 }
 
+/* ==========================================================================
+   VITRINE VENTES FLASH EN TÊTE DE CATALOGUE (STYLE SHEIN & ALIBABA)
+   ========================================================================== */
+
+.flash-sale-showcase-container {
+  background: linear-gradient(180deg, #FFF5F5 0%, #FFFFFF 100%);
+  border: 2px solid #FCA5A5;
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.08);
+  position: relative;
+}
+
+.flash-showcase-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1.5px dashed #FECDD3;
+}
+
+.flash-header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.flash-bolt-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+  animation: pulseFlash 1.6s infinite;
+  flex-shrink: 0;
+}
+
+.flash-main-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #991B1B;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.flash-sub-title {
+  font-size: 0.775rem;
+  color: #B91C1C;
+  font-weight: 600;
+}
+
+.flash-countdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #991B1B;
+  color: #FFFFFF;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(153, 27, 27, 0.25);
+}
+
+.flash-pill-label {
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
+.flash-pill-timer {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+}
+
+.flash-products-grid {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 480px) {
+  .flash-sale-showcase-container {
+    padding: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+  .flash-showcase-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  .flash-main-title {
+    font-size: 1.05rem;
+  }
+  .flash-bolt-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .flash-countdown-pill {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@keyframes pulseFlash {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.55);
+  }
+}
+
+/* Jauge d'Urgence Stock Style Shein */
+.flash-stock-urgency {
+  margin: 0.35rem 0 0.45rem;
+}
+
+.flash-stock-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: #FEE2E2;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.flash-stock-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #F59E0B 0%, #EF4444 100%);
+  border-radius: var(--radius-full);
+}
+
+.flash-stock-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #DC2626;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+  line-height: 1.1;
+}
+
+
+
