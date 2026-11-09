@@ -469,9 +469,9 @@ class Store {
     return message;
   }
 
-  // Gestion de l'application préférée (WhatsApp Business ou Normal)
+  // Gestion de l'application préférée (WhatsApp Normal par défaut ou WhatsApp Business)
   getPreferredWhatsAppApp() {
-    return localStorage.getItem("djibshop_wa_app") || "business";
+    return localStorage.getItem("djibshop_wa_app") || "normal";
   }
 
   setPreferredWhatsAppApp(appType) {
@@ -493,8 +493,9 @@ class Store {
 
     if (isAndroid) {
       // Cible spécifiquement WhatsApp Business (com.whatsapp.w4b) ou WhatsApp Normal (com.whatsapp)
-      const pkg = (chosenApp === "normal") ? "com.whatsapp" : "com.whatsapp.w4b";
-      return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;package=${pkg};S.browser_fallback_url=https%3A%2F%2Fwa.me%2F${phone}%3Ftext%3D${encoded};end;`;
+      // L'intent officiel wa.me avec scheme=https ouvre l'application native directement sans passer par api.whatsapp.com
+      const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
+      return `intent://wa.me/${phone}?text=${encoded}#Intent;scheme=https;package=${pkg};end;`;
     } else if (isIOS) {
       // iPhone / iPad : schéma direct de l'application
       return `whatsapp://send?phone=${phone}&text=${encoded}`;
@@ -528,16 +529,6 @@ class Store {
     setTimeout(() => {
       if (link.parentNode) link.parentNode.removeChild(link);
     }, 150);
-
-    // Fallback de sécurité : si après 800ms l'application n'est pas passée au premier plan
-    const settings = this.getSettings();
-    const phone = settings.whatsappCleanNumber || "25377078793";
-    const encoded = encodeURIComponent(message);
-    setTimeout(() => {
-      if (document.visibilityState === "visible") {
-        window.location.href = `https://wa.me/${phone}?text=${encoded}`;
-      }
-    }, 800);
   }
 
   generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null, appType = null) {

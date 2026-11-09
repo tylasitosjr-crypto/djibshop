@@ -281,12 +281,12 @@
             <span id="modal-size-stock-feedback" style="font-size: 0.8125rem; font-weight: 600;"></span>
           </div>
 
-          <!-- Choix Application : WhatsApp Business ou Normal -->
+          <!-- Choix Application : WhatsApp Normal (par défaut) ou Business -->
           <div class="wa-app-selector-bar">
             <span class="wa-selector-label">Votre appli WhatsApp :</span>
             <div class="wa-pill-toggle" id="modal-wa-app-toggle">
-              <button type="button" class="wa-toggle-pill active" data-app="business">💼 Business</button>
-              <button type="button" class="wa-toggle-pill" data-app="normal">💬 Normal</button>
+              <button type="button" class="wa-toggle-pill active" data-app="normal">💬 WhatsApp Normal</button>
+              <button type="button" class="wa-toggle-pill" data-app="business">💼 WhatsApp Business</button>
             </div>
           </div>
 
@@ -296,7 +296,7 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/>
               </svg>
-              <span id="modal-btn-wa-label">Commander sur WhatsApp Business</span>
+              <span id="modal-btn-wa-label">Commander sur WhatsApp</span>
             </a>
             <button type="button" class="btn-secondary-cart" id="modal-btn-add-cart">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
@@ -359,8 +359,8 @@
         <div class="wa-app-selector-bar" style="margin-top: 0.85rem; margin-bottom: 0.85rem;">
           <span class="wa-selector-label">Votre appli :</span>
           <div class="wa-pill-toggle" id="cart-wa-app-toggle">
-            <button type="button" class="wa-toggle-pill active" data-app="business">💼 Business</button>
-            <button type="button" class="wa-toggle-pill" data-app="normal">💬 Normal</button>
+            <button type="button" class="wa-toggle-pill active" data-app="normal">💬 Normal</button>
+            <button type="button" class="wa-toggle-pill" data-app="business">💼 Business</button>
           </div>
         </div>
 
@@ -368,7 +368,7 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/>
           </svg>
-          <span id="cart-btn-wa-label">Finaliser sur WhatsApp Business</span>
+          <span id="cart-btn-wa-label">Finaliser la commande sur WhatsApp</span>
         </a>
       </div>
     </aside>

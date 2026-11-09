@@ -239,10 +239,10 @@ class ClientApp {
         });
       });
       if (this.modalBtnWaLabel) {
-        this.modalBtnWaLabel.textContent = isBiz ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp Normal";
+        this.modalBtnWaLabel.textContent = isBiz ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp";
       }
       if (this.cartBtnWaLabel) {
-        this.cartBtnWaLabel.textContent = isBiz ? "Finaliser sur WhatsApp Business" : "Finaliser sur WhatsApp Normal";
+        this.cartBtnWaLabel.textContent = isBiz ? "Finaliser sur WhatsApp Business" : "Finaliser la commande sur WhatsApp";
       }
       this.updateModalWhatsAppHref();
     };
@@ -761,7 +761,7 @@ class ClientApp {
     const pref = store.getPreferredWhatsAppApp();
     this.modalDirectWaBtn.href = store.getWhatsAppUrl(message, pref);
     if (this.modalBtnWaLabel) {
-      this.modalBtnWaLabel.textContent = (pref === "business") ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp Normal";
+      this.modalBtnWaLabel.textContent = (pref === "business") ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp";
     }
   }
 
