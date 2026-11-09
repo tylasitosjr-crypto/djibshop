@@ -471,12 +471,14 @@ class Store {
 
   // Gestion de l'application préférée (WhatsApp Normal par défaut ou WhatsApp Business)
   getPreferredWhatsAppApp() {
-    return localStorage.getItem("djibshop_wa_app") || "normal";
+    const pref = localStorage.getItem("djibshop_wa_app");
+    return (pref === "business") ? "business" : "normal";
   }
 
   setPreferredWhatsAppApp(appType) {
-    localStorage.setItem("djibshop_wa_app", appType);
-    window.dispatchEvent(new CustomEvent("wa-pref-changed", { detail: appType }));
+    const cleanType = (appType === "business") ? "business" : "normal";
+    localStorage.setItem("djibshop_wa_app", cleanType);
+    window.dispatchEvent(new CustomEvent("wa-pref-changed", { detail: cleanType }));
   }
 
   // Génère l'URL WhatsApp optimale selon le système d'exploitation et l'application choisie (Business ou Normal)
@@ -492,10 +494,9 @@ class Store {
     const chosenApp = appType || this.getPreferredWhatsAppApp();
 
     if (isAndroid) {
-      // Cible spécifiquement WhatsApp Business (com.whatsapp.w4b) ou WhatsApp Normal (com.whatsapp)
-      // L'intent officiel wa.me avec scheme=https ouvre l'application native directement sans passer par api.whatsapp.com
+      // Intent natif Android : lance directement l'application WhatsApp sélectionnée sans passer par api.whatsapp.com
       const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
-      return `intent://wa.me/${phone}?text=${encoded}#Intent;scheme=https;package=${pkg};end;`;
+      return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;package=${pkg};end;`;
     } else if (isIOS) {
       // iPhone / iPad : schéma direct de l'application
       return `whatsapp://send?phone=${phone}&text=${encoded}`;

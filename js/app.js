@@ -788,7 +788,8 @@ class ClientApp {
       this.modalQuantity,
       this.selectedModalPrice
     );
-    store.openWhatsApp(message);
+    const pref = store.getPreferredWhatsAppApp();
+    store.openWhatsApp(message, pref);
   }
 
   addCurrentModalToCart() {
@@ -940,7 +941,8 @@ class ClientApp {
     store.createOrder(customerInfo, cart, total);
 
     const message = store.buildCartOrderMessage(customerInfo, cart, total);
-    store.openWhatsApp(message);
+    const pref = store.getPreferredWhatsAppApp();
+    store.openWhatsApp(message, pref);
 
     store.clearCart();
     this.closeCartDrawer();
