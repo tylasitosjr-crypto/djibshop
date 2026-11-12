@@ -15,6 +15,7 @@ class AdminApp {
     this.uploadedImages = [];
     this.selectedBgStyle = "studio-white";
     this.isPasswordVisible = false;
+    this.selectedOrderStatusFilter = "all";
 
     this.initElements();
     this.bindEvents();
@@ -192,16 +193,74 @@ class AdminApp {
       this.exportCatalogJson();
     });
 
-    document.getElementById("btn-clear-all-orders")?.addEventListener("click", () => {
-      store.clearOrders();
+    document.getElementById("btn-clear-all-orders")?.addEventListener("click", async () => {
+      if (confirm("Voulez-vous vraiment effacer toutes les commandes ?")) {
+        await store.clearOrders();
+        this.renderAdminOrdersTable();
+        this.updateStats();
+      }
+    });
+
+    // Formulaire rapide d'enregistrement de commande
+    const newOrderBox = document.getElementById("admin-new-order-box");
+    document.getElementById("btn-toggle-new-order-form")?.addEventListener("click", () => {
+      if (newOrderBox) {
+        newOrderBox.style.display = newOrderBox.style.display === "none" ? "block" : "none";
+      }
+    });
+    document.getElementById("btn-cancel-manual-order")?.addEventListener("click", () => {
+      if (newOrderBox) newOrderBox.style.display = "none";
+    });
+    document.getElementById("btn-save-manual-order")?.addEventListener("click", () => {
+      const name = document.getElementById("manual-ord-name")?.value.trim() || "Client WhatsApp";
+      const phone = document.getElementById("manual-ord-phone")?.value.trim() || "WhatsApp Direct";
+      const district = document.getElementById("manual-ord-district")?.value.trim() || "Djibouti";
+      const itemTitle = document.getElementById("manual-ord-item")?.value.trim() || "Article DjibSHOP";
+      const total = parseFloat(document.getElementById("manual-ord-total")?.value) || 0;
+      const status = document.getElementById("manual-ord-status")?.value || "En cours de collecte";
+
+      store.createOrder(
+        { name, phone, district },
+        [{ id: null, title: itemTitle, size: null, quantity: 1, price: total }],
+        total,
+        status
+      );
+
+      if (document.getElementById("manual-ord-name")) document.getElementById("manual-ord-name").value = "";
+      if (document.getElementById("manual-ord-phone")) document.getElementById("manual-ord-phone").value = "";
+      if (document.getElementById("manual-ord-district")) document.getElementById("manual-ord-district").value = "";
+      if (document.getElementById("manual-ord-item")) document.getElementById("manual-ord-item").value = "";
+      if (document.getElementById("manual-ord-total")) document.getElementById("manual-ord-total").value = "";
+      if (newOrderBox) newOrderBox.style.display = "none";
+
       this.renderAdminOrdersTable();
       this.updateStats();
     });
 
-    // Mise à jour automatique dès que Supabase synchronise les articles
+    // Filtres de statut type Shein
+    const statusFilterContainer = document.getElementById("admin-orders-status-filters");
+    if (statusFilterContainer) {
+      statusFilterContainer.querySelectorAll(".shein-filter-pill").forEach(btn => {
+        btn.addEventListener("click", () => {
+          statusFilterContainer.querySelectorAll(".shein-filter-pill").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          this.selectedOrderStatusFilter = btn.dataset.status || "all";
+          this.renderAdminOrdersTable();
+        });
+      });
+    }
+
+    // Mise à jour automatique dès que Supabase synchronise les articles ou commandes
     window.addEventListener("catalog-synced", () => {
       if (store.isAdminAuthenticated()) {
         this.renderAdminProductsTable();
+        this.updateStats();
+      }
+    });
+
+    window.addEventListener("orders-synced", () => {
+      if (store.isAdminAuthenticated()) {
+        this.renderAdminOrdersTable();
         this.updateStats();
       }
     });
@@ -881,50 +940,116 @@ class AdminApp {
     });
   }
 
-  // --- RENDU COMMANDES ---
+  // --- RENDU COMMANDES & STATUTS TYPE SHEIN ---
   renderAdminOrdersTable() {
     if (!this.adminOrdersTableBody) return;
-    const orders = store.getOrders();
+    const allOrders = store.getOrders();
+    const statuses = store.getOrderStatuses();
+
+    // Mettre à jour les compteurs sur les pilules de filtre
+    const filterContainer = document.getElementById("admin-orders-status-filters");
+    if (filterContainer) {
+      filterContainer.querySelectorAll(".shein-filter-pill").forEach(pill => {
+        const st = pill.dataset.status;
+        const count = st === "all" ? allOrders.length : allOrders.filter(o => o.status === st).length;
+        const baseLabel = st === "all" ? "Toutes" : st;
+        pill.textContent = count > 0 ? `${baseLabel} (${count})` : baseLabel;
+      });
+    }
+
+    const filteredOrders = this.selectedOrderStatusFilter === "all"
+      ? allOrders
+      : allOrders.filter(o => o.status === this.selectedOrderStatusFilter);
+
     this.adminOrdersTableBody.innerHTML = "";
 
-    if (orders.length === 0) {
+    if (filteredOrders.length === 0) {
       this.adminOrdersTableBody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--slate-400);">
-            Aucune commande enregistrée pour le moment.
+          <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--slate-400);">
+            Aucune commande dans cette catégorie pour le moment.
           </td>
         </tr>
       `;
       return;
     }
 
-    orders.forEach(ord => {
+    const stepOrder = [
+      "Commande confirmée",
+      "En cours de collecte",
+      "Expédié",
+      "En cours de livraison",
+      "Livré"
+    ];
+
+    filteredOrders.forEach(ord => {
       const tr = document.createElement("tr");
-      const itemsList = ord.items.map(it => `${it.quantity}x ${it.title} ${it.size ? `(${it.size})` : ""}`).join("<br>");
+      const itemsList = (ord.items || []).map(it => `<strong>${it.quantity}x</strong> ${it.title} ${it.size ? `<span style="color:var(--slate-500);">(${it.size})</span>` : ""}`).join("<br>");
+
+      const statusMeta = statuses.find(s => s.label === ord.status) || statuses[1];
+      const currentStepIdx = stepOrder.indexOf(ord.status);
+      const isCancelled = ord.status === "Annulé";
+
+      const stepsHtml = isCancelled
+        ? `<div style="font-size: 0.72rem; font-weight: 700; color: #DC2626; margin-top: 6px;">Commande annulée</div>`
+        : `<div class="shein-progress-track">
+            ${stepOrder.map((stLabel, idx) => {
+              const done = currentStepIdx >= idx;
+              const current = currentStepIdx === idx;
+              const shortLabel = idx === 0 ? "Confirmée" : idx === 1 ? "Collecte" : idx === 2 ? "Expédié" : idx === 3 ? "Livraison" : "Livré";
+              return `
+                <div class="shein-step ${done ? "done" : ""} ${current ? "current" : ""}">
+                  <span class="shein-step-dot"></span>
+                  <span class="shein-step-label">${shortLabel}</span>
+                </div>
+              `;
+            }).join("")}
+          </div>`;
+
+      const optionsHtml = statuses.map(s =>
+        `<option value="${s.label}" ${s.label === ord.status ? "selected" : ""}>${s.label}</option>`
+      ).join("");
 
       tr.innerHTML = `
-        <td style="font-weight: 700; font-family: monospace;">${ord.id}</td>
-        <td style="font-size: 0.825rem; color: var(--slate-600);">${ord.date}</td>
         <td>
-          <div style="font-weight: 700;">${ord.customerName}</div>
+          <div style="font-weight: 700; font-family: monospace; font-size: 0.82rem; color: var(--slate-900);">${ord.id}</div>
+          <div style="font-size: 0.74rem; color: var(--slate-500); margin-top: 2px;">${ord.date || ""}</div>
+        </td>
+        <td>
+          <div style="font-weight: 700; color: var(--slate-900); font-size: 0.85rem;">${ord.customerName}</div>
           <div style="font-size: 0.75rem; color: var(--slate-500);">${ord.district} • ${ord.customerPhone}</div>
         </td>
-        <td style="font-size: 0.825rem;">${itemsList}</td>
-        <td style="font-weight: 800; color: var(--blue-900);">${store.formatPrice(ord.total)}</td>
-        <td>
-          <span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; background: #DEF7EC; color: #03543F;">
-            ${ord.status}
-          </span>
+        <td style="font-size: 0.8125rem; line-height: 1.45;">${itemsList}</td>
+        <td style="font-weight: 800; color: var(--slate-900); white-space: nowrap;">${store.formatPrice(ord.total)}</td>
+        <td style="min-width: 250px;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="shein-status-badge" style="background: ${statusMeta.bg}; color: ${statusMeta.color};">
+              ${ord.status}
+            </span>
+            <select class="shein-status-select" data-order-id="${ord.id}" aria-label="Changer le statut">
+              ${optionsHtml}
+            </select>
+          </div>
+          ${stepsHtml}
         </td>
-        <td style="text-align: right;">
-          <button type="button" class="action-btn action-btn-secondary btn-del-ord" data-id="${ord.id}" style="padding: 4px 8px; font-size: 0.75rem; color: var(--danger-crimson);">Suppr.</button>
+        <td style="text-align: right; white-space: nowrap;">
+          <button type="button" class="action-btn action-btn-secondary btn-del-ord" data-id="${ord.id}" style="padding: 4px 8px; font-size: 0.75rem; color: var(--danger-crimson);">Supprimer</button>
         </td>
       `;
-      tr.querySelector(".btn-del-ord")?.addEventListener("click", () => {
-        store.deleteOrder(ord.id);
+
+      const statusSelect = tr.querySelector(".shein-status-select");
+      statusSelect?.addEventListener("change", async (e) => {
+        const newStatus = e.target.value;
+        await store.updateOrderStatus(ord.id, newStatus);
+        this.renderAdminOrdersTable();
+      });
+
+      tr.querySelector(".btn-del-ord")?.addEventListener("click", async () => {
+        await store.deleteOrder(ord.id);
         this.renderAdminOrdersTable();
         this.updateStats();
       });
+
       this.adminOrdersTableBody.appendChild(tr);
     });
   }

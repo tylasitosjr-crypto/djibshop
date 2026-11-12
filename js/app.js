@@ -594,7 +594,7 @@ class ClientApp {
     // Badges & Vente Flash
     let badgeHtml = "";
     if (product.flashSale) {
-      badgeHtml = `<span class="card-badge badge-flash-sale">⚡ FLASH</span>`;
+      badgeHtml = `<span class="card-badge badge-flash-sale">OFFRE</span>`;
     } else if (discountPercent > 0) {
       badgeHtml = `<span class="card-badge badge-promo">-${discountPercent}%</span>`;
     } else if (product.badge && product.badge !== "Aucun") {
@@ -693,6 +693,12 @@ class ClientApp {
       e.stopPropagation();
       const hasSizes = product.sizes && typeof product.sizes === "object" && Object.keys(product.sizes).length > 0;
       if (!hasSizes) {
+        store.createOrder(
+          { name: "Client WhatsApp", district: "Djibouti", phone: "WhatsApp Direct" },
+          [{ id: product.id, ref: product.ref, title: product.title, size: null, quantity: 1, price: product.price }],
+          product.price,
+          "En cours de collecte"
+        );
         const message = store.buildDirectOrderMessage(product, null, 1, product.price);
         store.openWhatsApp(message);
       } else {
@@ -712,7 +718,7 @@ class ClientApp {
       const added = store.toggleWishlist(product.id);
       wishBtn.classList.toggle("active", added);
       wishBtn.querySelector("svg").setAttribute("fill", added ? "currentColor" : "none");
-      window.showToast(added ? "Ajouté à vos favoris ❤️" : "Retiré de vos favoris", "info");
+      window.showToast(added ? "Ajouté aux favoris" : "Retiré des favoris", "info");
     });
 
     return card;
@@ -817,7 +823,7 @@ class ClientApp {
       let html = `
         <div class="variant-header">
           <span class="variant-title">${variantTitle} :</span>
-          <button type="button" class="size-guide-inline-btn" id="btn-modal-open-size-guide">📏 Guide des tailles</button>
+          <button type="button" class="size-guide-inline-btn" id="btn-modal-open-size-guide">Guide des tailles</button>
         </div>
         <div class="size-options-container" id="modal-size-btn-group">
       `;
@@ -951,11 +957,29 @@ class ClientApp {
       this.selectedModalPrice = typeof sizeVal === "object" && sizeVal.price ? sizeVal.price : this.activeProductModal.price;
     }
 
+    const unitPrice = this.selectedModalPrice || this.activeProductModal.price;
+    const qty = this.modalQuantity || 1;
+
+    // Enregistrer la commande dans le tableau de bord Admin avec statut type Shein ("En cours de collecte")
+    store.createOrder(
+      { name: "Client WhatsApp", district: "Djibouti", phone: "WhatsApp Direct" },
+      [{
+        id: this.activeProductModal.id,
+        ref: this.activeProductModal.ref,
+        title: this.activeProductModal.title,
+        size: this.selectedModalSize,
+        quantity: qty,
+        price: unitPrice
+      }],
+      unitPrice * qty,
+      "En cours de collecte"
+    );
+
     const message = store.buildDirectOrderMessage(
       this.activeProductModal, 
       this.selectedModalSize, 
-      this.modalQuantity,
-      this.selectedModalPrice
+      qty,
+      unitPrice
     );
     const pref = store.getPreferredWhatsAppApp();
     store.openWhatsApp(message, pref);
@@ -1001,12 +1025,12 @@ class ClientApp {
 
     if (type === "sizes") {
       this.infoModalBody.innerHTML = `
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.5rem;">📏 Guide des Tailles & Pointures DjibSHOP</h3>
-        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1.25rem;">Nos maillots et vêtements taillent normalement (coupe européenne standard). Si vous préférez une coupe ample, prenez une taille au-dessus.</p>
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--slate-900); margin-bottom: 0.5rem;">Guide des Tailles & Pointures</h3>
+        <p style="font-size: 0.84rem; color: var(--slate-600); margin-bottom: 1.25rem;">Nos maillots et vêtements taillent normalement (coupe européenne standard). Si vous préférez une coupe ample, prenez une taille au-dessus.</p>
         <div style="overflow-x: auto; margin-bottom: 1.25rem;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.825rem; text-align: left;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; text-align: left;">
             <thead>
-              <tr style="background: var(--blue-50); color: var(--blue-900);">
+              <tr style="background: var(--slate-100); color: var(--slate-900);">
                 <th style="padding: 8px 10px; border: 1px solid var(--slate-200);">Taille</th>
                 <th style="padding: 8px 10px; border: 1px solid var(--slate-200);">Tour de poitrine</th>
                 <th style="padding: 8px 10px; border: 1px solid var(--slate-200);">Stature recommandée</th>
@@ -1021,29 +1045,47 @@ class ClientApp {
             </tbody>
           </table>
         </div>
-        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP ! J\\'ai besoin d\\'aide pour choisir ma taille.');">
+        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP, j\\'ai besoin d\\'aide pour choisir ma taille.');">
           Demander conseil sur WhatsApp
         </button>
       `;
     } else if (type === "delivery") {
       this.infoModalBody.innerHTML = `
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.5rem;">🚚 Zones de Livraison à Djibouti</h3>
-        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1rem;">Nous assurons la livraison rapide dans tous les quartiers de Djibouti-Ville et Balbala :</p>
-        <ul style="font-size: 0.85rem; color: var(--slate-700); line-height: 1.8; margin-bottom: 1.25rem; padding-left: 1.2rem;">
-          <li><strong>Centre-Ville, Plateau, Héron, Haramous, Gabode</strong> : Livraison express le jour même.</li>
-          <li><strong>Quartiers 1 à 7, Ambouli, Stade, Einguela</strong> : Livraison rapide dans la journée.</li>
-          <li><strong>Balbala, PK12, Hayabley, Hodan, Cheik Moussa</strong> : Livraison organisée quotidiennement.</li>
-          <li><strong>Paiement 100% à la livraison</strong> : Vous vérifiez votre article à la réception avant de régler en FDJ (espèces, Waafi, D-Money ou CacPay).</li>
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--slate-900); margin-bottom: 0.5rem;">Zones de Livraison à Djibouti</h3>
+        <p style="font-size: 0.84rem; color: var(--slate-600); margin-bottom: 1rem;">Nous assurons la livraison rapide dans tous les quartiers de Djibouti-Ville et Balbala :</p>
+        <ul style="font-size: 0.84rem; color: var(--slate-700); line-height: 1.8; margin-bottom: 1.25rem; padding-left: 1.2rem;">
+          <li><strong>Centre-Ville, Plateau, Héron, Haramous, Gabode</strong> : Livraison rapide le jour même.</li>
+          <li><strong>Quartiers 1 à 7, Ambouli, Stade, Einguela</strong> : Livraison dans la journée.</li>
+          <li><strong>Balbala, PK12, Hayabley, Hodan, Cheik Moussa</strong> : Livraison quotidienne.</li>
+          <li><strong>Paiement à la réception</strong> : Vous vérifiez votre article avant de régler (espèces, Waafi, D-Money ou CacPay).</li>
         </ul>
-        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP ! Je souhaite connaître les modalités de livraison pour mon quartier.');">
-          Contacter le livreur sur WhatsApp
+        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP, je souhaite connaître les modalités de livraison pour mon quartier.');">
+          Contacter le service livraison
         </button>
       `;
     } else {
+      const orders = store.getOrders().slice(0, 5);
+      let ordersTrackingHtml = "";
+      if (orders.length > 0) {
+        ordersTrackingHtml = `<div style="margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.65rem;">` +
+          orders.map(o => {
+            const itemsLabel = (o.items || []).map(i => `${i.quantity}x ${i.title}${i.size ? ` (${i.size})` : ""}`).join(", ");
+            return `
+              <div style="border: 1px solid var(--slate-200); border-radius: 6px; padding: 0.75rem; background: var(--slate-50);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                  <strong style="font-size: 0.8rem; color: var(--slate-900);">${o.id}</strong>
+                  <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #111827; color: #FFFFFF;">${o.status}</span>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--slate-600);">${itemsLabel}</div>
+              </div>
+            `;
+          }).join("") + `</div>`;
+      }
       this.infoModalBody.innerHTML = `
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.5rem;">📦 Suivi de Commande Direct</h3>
-        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1.25rem;">Toutes les commandes DjibSHOP sont traitées en direct par notre équipe sur WhatsApp au <strong>+253 77 07 87 93</strong>. Cliquez ci-dessous pour vérifier le statut de votre livraison :</p>
-        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP ! Je souhaite suivre ma commande en cours.');">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--slate-900); margin-bottom: 0.5rem;">Suivi de Commande</h3>
+        <p style="font-size: 0.84rem; color: var(--slate-600); margin-bottom: 1rem;">Suivez l'avancement de votre commande (Collecte, Expédition, En cours de livraison, Livré) ou contactez notre équipe au <strong>+253 77 07 87 93</strong> :</p>
+        ${ordersTrackingHtml}
+        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP, je souhaite suivre l\\'état de ma commande.');">
           Suivre ma commande sur WhatsApp
         </button>
       `;

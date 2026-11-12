@@ -1,6 +1,6 @@
 /**
  * DjibSHOP - Supabase Cloud Database Client & Persistence
- * Synchronisation temps réel sans cache obsolète (Client SDK + Fallback REST Direct anti-blocage CDN)
+ * Synchronisation temps réel du catalogue et du suivi des commandes (Style Shein)
  */
 
 const DEFAULT_SUPABASE_CONFIG = {
@@ -9,6 +9,7 @@ const DEFAULT_SUPABASE_CONFIG = {
 };
 
 const SUPABASE_CONFIG_KEY = "djibshop_supabase_config_v2";
+const SYSTEM_ORDERS_ROW_ID = "__system_orders_v1__";
 
 class SupabaseService {
   constructor() {
@@ -16,6 +17,7 @@ class SupabaseService {
     this.url = "";
     this.anonKey = "";
     this.isConfigured = false;
+    this.lastFetchedOrders = null;
     this.init();
   }
 
@@ -47,13 +49,10 @@ class SupabaseService {
 
     try {
       localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ url: this.url, anonKey: this.anonKey }));
-    } catch (e) {
-      console.warn("Impossible de sauvegarder la config Supabase dans localStorage", e);
-    }
+    } catch (e) {}
 
     try {
       if (window.supabase && typeof window.supabase.createClient === "function") {
-        // Désactiver le cache navigateur sur toutes les requêtes Supabase
         this.client = window.supabase.createClient(this.url, this.anonKey, {
           auth: { persistSession: false },
           global: {
@@ -61,9 +60,7 @@ class SupabaseService {
           }
         });
       }
-    } catch (e) {
-      console.warn("Initialisation SDK Supabase ignorée, utilisation du mode REST direct :", e);
-    }
+    } catch (e) {}
 
     return true;
   }
@@ -116,7 +113,6 @@ class SupabaseService {
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Appel REST direct avec cache-busting pour garantir que les nouveaux produits s'affichent toujours
         const timestamp = Date.now();
         const endpoint = `${this.url}/rest/v1/products?select=*&order=created_at.desc&_t=${timestamp}`;
         const response = await fetch(endpoint, {
@@ -131,7 +127,16 @@ class SupabaseService {
 
         const data = await response.json();
         if (Array.isArray(data)) {
-          return data.map(item => this.mapFromSupabase(item));
+          // Extraire la ligne système des commandes si elle existe
+          const ordersRow = data.find(item => item.id === SYSTEM_ORDERS_ROW_ID || item.category === "__system__");
+          if (ordersRow && ordersRow.sizes && Array.isArray(ordersRow.sizes.orders)) {
+            this.lastFetchedOrders = ordersRow.sizes.orders;
+          }
+
+          // Retourner uniquement les vrais produits du catalogue
+          return data
+            .filter(item => item.id !== SYSTEM_ORDERS_ROW_ID && item.category !== "__system__")
+            .map(item => this.mapFromSupabase(item));
         }
       } catch (e) {
         console.warn(`Tentative ${attempt + 1}/${retries + 1} fetchProducts échouée:`, e.message);
@@ -141,6 +146,35 @@ class SupabaseService {
       }
     }
     return null;
+  }
+
+  async saveOrdersToCloud(ordersList) {
+    if (!this.isConfigured) return false;
+    try {
+      const payload = {
+        id: SYSTEM_ORDERS_ROW_ID,
+        ref: "SYS-ORDERS",
+        title: "__SYSTEM_ORDERS__",
+        category: "__system__",
+        price: 0,
+        total_stock: 0,
+        sizes: { orders: Array.isArray(ordersList) ? ordersList : [] },
+        images: [],
+        created_at: new Date().toISOString()
+      };
+      const response = await fetch(`${this.url}/rest/v1/products?on_conflict=id`, {
+        method: "POST",
+        headers: this.getRestHeaders({
+          "Prefer": "resolution=merge-duplicates"
+        }),
+        body: JSON.stringify(payload),
+        cache: "no-store"
+      });
+      return response.ok;
+    } catch (e) {
+      console.warn("Erreur sauvegarde commandes cloud:", e);
+      return false;
+    }
   }
 
   async saveProduct(product) {
@@ -187,7 +221,9 @@ class SupabaseService {
   async syncAllToSupabase(products) {
     if (!this.isConfigured) return false;
     try {
-      const payloads = products.map(p => this.mapToSupabase(p));
+      const payloads = products
+        .filter(p => p.id !== SYSTEM_ORDERS_ROW_ID && p.category !== "__system__")
+        .map(p => this.mapToSupabase(p));
       const response = await fetch(`${this.url}/rest/v1/products?on_conflict=id`, {
         method: "POST",
         headers: this.getRestHeaders({

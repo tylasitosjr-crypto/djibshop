@@ -3355,3 +3355,415 @@ a {
     height: 26px !important;
   }
 }
+
+
+/* ==========================================================================
+   PRO E-COMMERCE DESIGNER OVERRIDES & SHEIN ORDER WORKFLOW (v3.3)
+   ========================================================================== */
+
+body {
+  background-color: #F7F7F8;
+  color: #111827;
+}
+
+/* 1. Top Announcement Bar — Clean Editorial Charcoal */
+.top-announcement-bar {
+  background: #111827;
+  color: #E5E7EB;
+  border-bottom: 1px solid #1F2937;
+  font-size: 0.75rem;
+  padding: 0.42rem 0;
+  letter-spacing: 0.01em;
+}
+
+.announcement-link {
+  color: #FFFFFF;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 2. Header & Brand Logo — Minimalist Studio Retail */
+.main-header {
+  background: #FFFFFF;
+  backdrop-filter: none;
+  border-bottom: 1px solid #E5E7EB;
+  box-shadow: none;
+}
+
+.brand-logo-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  background: #111827;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.03em;
+}
+
+.brand-title span {
+  color: #0B4FBA;
+}
+
+.brand-tagline {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+.search-input-wrapper input {
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  height: 38px;
+  font-size: 0.825rem;
+}
+
+.search-input-wrapper input:focus {
+  background: #FFFFFF;
+  border-color: #111827;
+  box-shadow: none;
+}
+
+.action-btn {
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  height: 38px;
+  padding: 0 0.9rem;
+}
+
+.action-btn-cart {
+  background: #111827;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.action-btn-cart:hover {
+  background: #1F2937;
+  transform: none;
+}
+
+/* 3. Category Navigation Bar — Clean Retail Tabs */
+.category-nav-bar {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 0.45rem 0;
+}
+
+.category-nav-item {
+  border-radius: 5px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4B5563;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.category-nav-item:hover {
+  background: #F3F4F6;
+  color: #111827;
+}
+
+.category-nav-item.active {
+  background: #111827;
+  color: #FFFFFF;
+  border-color: #111827;
+  box-shadow: none;
+}
+
+.cat-pill-count {
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* 4. Catalog Controls Bar */
+.catalog-controls-bar {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.85rem;
+  box-shadow: none;
+}
+
+.catalog-count {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.btn-refresh-catalog {
+  background: #F9FAFB;
+  color: #374151;
+  border: 1px solid #D1D5DB;
+  border-radius: 5px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.btn-refresh-catalog:hover {
+  background: #F3F4F6;
+  color: #111827;
+}
+
+/* 5. Product Card — Crisp Human Designer Retail Card */
+.product-card {
+  border-radius: 6px;
+  border: 1px solid #E5E7EB;
+  box-shadow: none;
+  background: #FFFFFF;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.product-card:hover {
+  transform: none;
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.card-badge {
+  border-radius: 3px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  box-shadow: none;
+  animation: none !important;
+}
+
+.badge-flash-sale,
+.badge-promo {
+  background: #DC2626;
+  color: #FFFFFF;
+}
+
+.badge-nouveau {
+  background: #111827;
+  color: #FFFFFF;
+}
+
+.btn-card-order-wa {
+  background: #111827;
+  color: #FFFFFF;
+  border-radius: 4px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.btn-card-order-wa:hover:not(:disabled) {
+  background: #059669;
+  transform: none;
+}
+
+.btn-card-add-cart {
+  border-radius: 4px;
+  background: #F3F4F6;
+  color: #1F2937;
+  border: 1px solid #E5E7EB;
+}
+
+.btn-card-add-cart:hover:not(:disabled) {
+  background: #E5E7EB;
+  color: #111827;
+}
+
+/* 6. Trust Perks & Bottom Editorial Banner (No AI Glows) */
+.trust-perk-card {
+  border-radius: 6px;
+  border: 1px solid #E5E7EB;
+  box-shadow: none;
+  padding: 0.85rem 1rem;
+}
+
+.trust-perk-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: #F3F4F6;
+  color: #111827;
+}
+
+.hero-banner {
+  background: #111827;
+  color: #FFFFFF;
+  padding: 2.25rem 0;
+  border-top: 1px solid #1F2937;
+}
+
+.hero-bg-glow {
+  display: none !important;
+}
+
+.hero-tag {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #E5E7EB;
+  border-radius: 4px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hero-title {
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.65rem;
+}
+
+.hero-subtitle {
+  font-size: 0.875rem;
+  color: #9CA3AF;
+  margin-bottom: 1.25rem;
+}
+
+.hero-explore-btn {
+  border-radius: 5px;
+  padding: 0.65rem 1.15rem;
+  font-size: 0.825rem;
+  background: #FFFFFF;
+  color: #111827;
+  box-shadow: none;
+}
+
+.hero-wa-inline-btn {
+  border-radius: 5px;
+  padding: 0.65rem 1.15rem;
+  font-size: 0.825rem;
+}
+
+.hero-action-box {
+  background: #1F2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 1.35rem;
+  backdrop-filter: none;
+}
+
+/* 7. Admin Shein-Style Order Status Workflow */
+.shein-filter-pill {
+  padding: 0.38rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4B5563;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.shein-filter-pill:hover {
+  background: #E5E7EB;
+  color: #111827;
+}
+
+.shein-filter-pill.active {
+  background: #111827;
+  color: #FFFFFF;
+  border-color: #111827;
+}
+
+.shein-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shein-status-select {
+  padding: 3px 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #111827;
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.shein-status-select:focus {
+  outline: none;
+  border-color: #111827;
+}
+
+.shein-progress-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  position: relative;
+  gap: 4px;
+}
+
+.shein-progress-track::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: #E5E7EB;
+  z-index: 0;
+}
+
+.shein-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.shein-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #E5E7EB;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 0 1px #D1D5DB;
+}
+
+.shein-step.done .shein-step-dot {
+  background: #111827;
+  box-shadow: 0 0 0 1px #111827;
+}
+
+.shein-step.current .shein-step-dot {
+  background: #059669;
+  box-shadow: 0 0 0 2px #A7F3D0;
+}
+
+.shein-step-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #9CA3AF;
+  white-space: nowrap;
+}
+
+.shein-step.done .shein-step-label {
+  color: #374151;
+}
+
+.shein-step.current .shein-step-label {
+  color: #059669;
+  font-weight: 700;
+}

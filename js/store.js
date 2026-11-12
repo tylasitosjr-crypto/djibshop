@@ -24,6 +24,15 @@ const DEFAULT_SETTINGS = {
   adminPassword: "abouali2004\\"
 };
 
+const SHEIN_ORDER_STATUSES = [
+  { key: "confirmee", label: "Commande confirmée", step: 1, color: "#0B4FBA", bg: "#EFF6FF" },
+  { key: "collecte", label: "En cours de collecte", step: 2, color: "#D97706", bg: "#FEF3C7" },
+  { key: "expedie", label: "Expédié", step: 3, color: "#7C3AED", bg: "#F3E8FF" },
+  { key: "livraison", label: "En cours de livraison", step: 4, color: "#0284C7", bg: "#E0F2FE" },
+  { key: "livre", label: "Livré", step: 5, color: "#059669", bg: "#D1FAE5" },
+  { key: "annule", label: "Annulé", step: 0, color: "#DC2626", bg: "#FEE2E2" }
+];
+
 class Store {
   constructor() {
     this.memoryProducts = null;
@@ -42,7 +51,7 @@ class Store {
 
   cleanProductsList(products) {
     if (!Array.isArray(products)) return [];
-    return products.filter(p => p && p.id && !this.isLegacyDemoItem(p));
+    return products.filter(p => p && p.id && p.id !== "__system_orders_v1__" && p.category !== "__system__" && !this.isLegacyDemoItem(p));
   }
 
   async init() {
@@ -157,6 +166,16 @@ class Store {
           this.isLoadingCatalog = false;
           this.saveProducts(cleanRemote);
           this.reconcileCartWithCatalog(cleanRemote);
+
+          // Synchroniser également les commandes depuis Supabase si disponibles
+          if (Array.isArray(window.supabaseService.lastFetchedOrders)) {
+            const remoteOrders = window.supabaseService.lastFetchedOrders.filter(o => o && o.id !== "CMD-2026-0089");
+            try {
+              localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(remoteOrders));
+            } catch (e) {}
+            window.dispatchEvent(new CustomEvent("orders-synced", { detail: { orders: remoteOrders } }));
+          }
+
           window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: cleanRemote } }));
         } else {
           this.isLoadingCatalog = false;
@@ -462,50 +481,104 @@ class Store {
     return wishlist.includes(productId);
   }
 
-  // --- COMMANDES ---
+  // --- COMMANDES & STATUTS TYPE SHEIN ---
+  getOrderStatuses() {
+    return SHEIN_ORDER_STATUSES;
+  }
+
+  normalizeOrderStatus(rawStatus) {
+    if (!rawStatus) return "En cours de collecte";
+    const s = String(rawStatus).trim().toLowerCase();
+    if (s.includes("confirm")) return "Commande confirmée";
+    if (s.includes("collect") || s.includes("attente") || s.includes("prépar")) return "En cours de collecte";
+    if (s.includes("expéd")) return "Expédié";
+    if (s.includes("livraison") || s.includes("route")) return "En cours de livraison";
+    if (s.includes("livr")) return "Livré";
+    if (s.includes("annul")) return "Annulé";
+    return "En cours de collecte";
+  }
+
   getOrders() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
       const parsed = data ? JSON.parse(data) : [];
-      return Array.isArray(parsed) ? parsed.filter(o => o && o.id !== "CMD-2026-0089") : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(o => o && o.id !== "CMD-2026-0089")
+        .map(o => ({
+          ...o,
+          status: this.normalizeOrderStatus(o.status)
+        }));
     } catch {
       return [];
     }
   }
 
-  clearOrders() {
+  async syncOrdersToCloud(orders) {
+    if (window.supabaseService && window.supabaseService.isConfigured && typeof window.supabaseService.saveOrdersToCloud === "function") {
+      await window.supabaseService.saveOrdersToCloud(orders);
+    }
+    window.dispatchEvent(new CustomEvent("orders-synced", { detail: { orders } }));
+  }
+
+  async clearOrders() {
     try {
       STORAGE_KEYS.LEGACY_ORDERS.forEach(k => localStorage.removeItem(k));
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify([]));
     } catch (e) {}
+    await this.syncOrdersToCloud([]);
     return [];
   }
 
-  deleteOrder(orderId) {
+  async deleteOrder(orderId) {
     const orders = this.getOrders().filter(o => o.id !== orderId);
     try {
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
     } catch (e) {}
+    await this.syncOrdersToCloud(orders);
     return orders;
   }
 
-  createOrder(customerInfo, cartItems, totalAmount) {
+  async updateOrderStatus(orderId, newStatus) {
     const orders = this.getOrders();
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return null;
+
+    const cleanStatus = this.normalizeOrderStatus(newStatus);
+    orders[idx] = {
+      ...orders[idx],
+      status: cleanStatus,
+      updatedAt: new Date().toISOString().replace("T", " ").substring(0, 16)
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    } catch (e) {}
+
+    await this.syncOrdersToCloud(orders);
+    return orders[idx];
+  }
+
+  createOrder(customerInfo, cartItems, totalAmount, initialStatus = "En cours de collecte") {
+    const orders = this.getOrders();
+    const nowStr = new Date().toISOString().replace("T", " ").substring(0, 16);
     const newOrder = {
       id: "CMD-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000),
-      date: new Date().toISOString().replace("T", " ").substring(0, 16),
-      customerName: customerInfo.name || "Client WhatsApp",
-      customerPhone: customerInfo.phone || "+253 77 ...",
-      district: customerInfo.district || "Djibouti",
+      date: nowStr,
+      updatedAt: nowStr,
+      customerName: (customerInfo && customerInfo.name) ? customerInfo.name : "Client WhatsApp",
+      customerPhone: (customerInfo && customerInfo.phone) ? customerInfo.phone : "WhatsApp Direct",
+      district: (customerInfo && customerInfo.district) ? customerInfo.district : "Djibouti",
       items: cartItems.map(item => ({
         id: item.id,
+        ref: item.ref || "",
         title: item.title,
-        size: item.size,
-        quantity: item.quantity,
+        size: item.size || null,
+        quantity: item.quantity || 1,
         price: item.price
       })),
       total: totalAmount,
-      status: "En attente"
+      status: this.normalizeOrderStatus(initialStatus)
     };
 
     orders.unshift(newOrder);
@@ -514,6 +587,7 @@ class Store {
     } catch (e) {}
 
     this.decrementStockFromOrder(newOrder);
+    this.syncOrdersToCloud(orders);
     return newOrder;
   }
 
@@ -584,41 +658,41 @@ class Store {
   buildDirectOrderMessage(product, size = null, quantity = 1, customPrice = null) {
     const priceToUse = customPrice || product.price;
 
-    let message = `Bonjour DjibSHOP ! 👋\n`;
+    let message = `Bonjour DjibSHOP,\n`;
     message += `Je souhaite commander l'article suivant :\n\n`;
-    message += `🛍️ *Produit :* ${product.title}\n`;
-    message += `🏷️ *Réf :* ${product.ref}\n`;
+    message += `*Article :* ${product.title}\n`;
+    message += `*Réf :* ${product.ref}\n`;
     if (size) {
-      message += `📏 *Taille / Pointure :* ${size}\n`;
+      message += `*Taille / Pointure :* ${size}\n`;
     }
-    message += `🔢 *Quantité :* ${quantity}\n`;
-    message += `💰 *Prix unitaire :* ${this.formatPrice(priceToUse)}\n`;
-    message += `💵 *Total :* ${this.formatPrice(priceToUse * quantity)}\n\n`;
+    message += `*Quantité :* ${quantity}\n`;
+    message += `*Prix unitaire :* ${this.formatPrice(priceToUse)}\n`;
+    message += `*Total :* ${this.formatPrice(priceToUse * quantity)}\n\n`;
     message += `Merci !`;
 
     return message;
   }
 
   buildCartOrderMessage(customerInfo, cartItems, totalAmount) {
-    let message = `*NOUVELLE COMMANDE DJIBSHOP* 🛍️\n`;
-    message += `==============================\n\n`;
+    let message = `*COMMANDE DJIBSHOP*\n`;
+    message += `------------------------------\n\n`;
 
     if (customerInfo && (customerInfo.name || customerInfo.district || customerInfo.phone)) {
-      message += `👤 *Client :* ${customerInfo.name || "Client"}\n`;
-      message += `📍 *Adresse / Quartier :* ${customerInfo.district || "Djibouti"}\n`;
-      message += `📞 *Téléphone / WhatsApp :* ${customerInfo.phone || "Non renseigné"}\n\n`;
+      message += `*Client :* ${customerInfo.name || "Client"}\n`;
+      message += `*Adresse / Quartier :* ${customerInfo.district || "Djibouti"}\n`;
+      message += `*Téléphone :* ${customerInfo.phone || "Non renseigné"}\n\n`;
     }
 
-    message += `📋 *DÉTAIL DU PANIER :*\n`;
+    message += `*ARTICLES COMMANDÉS :*\n`;
     cartItems.forEach((item, index) => {
       message += `${index + 1}. *${item.title}* (${item.ref || ""})\n`;
-      if (item.size) message += `   • Taille : ${item.size}\n`;
-      message += `   • Quantité : ${item.quantity}\n`;
-      message += `   • Prix : ${this.formatPrice(item.price)} (${this.formatPrice(item.price * item.quantity)})\n`;
+      if (item.size) message += `   - Taille : ${item.size}\n`;
+      message += `   - Quantité : ${item.quantity}\n`;
+      message += `   - Sous-total : ${this.formatPrice(item.price * item.quantity)}\n`;
     });
 
-    message += `\n==============================\n`;
-    message += `💰 *TOTAL DE LA COMMANDE : ${this.formatPrice(totalAmount)}*\n\n`;
+    message += `\n------------------------------\n`;
+    message += `*TOTAL : ${this.formatPrice(totalAmount)}*\n\n`;
     message += `Merci !`;
 
     return message;
