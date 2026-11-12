@@ -3157,3 +3157,201 @@ a {
   max-width: 400px;
   margin: 0 auto 1.35rem;
 }
+
+/* ==========================================================================
+   CARTES COMPACTES STYLE ALIBABA / ALIEXPRESS (TYPOGRAPHIE & GRILLE FINE)
+   ========================================================================== */
+
+.catalog-controls-bar {
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+}
+
+.catalog-count {
+  font-size: 0.8rem;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.75rem;
+}
+
+.product-card {
+  border-radius: 8px;
+}
+
+.card-media-wrapper {
+  aspect-ratio: 1 / 1;
+  padding: 6px;
+}
+
+.product-card-img {
+  max-height: 155px;
+}
+
+.card-badge {
+  top: 6px;
+  left: 6px;
+  font-size: 0.55rem;
+  padding: 0.14rem 0.4rem;
+  border-radius: 4px;
+}
+
+.card-wish-btn {
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+}
+
+.card-photo-count-pill {
+  bottom: 6px;
+  right: 6px;
+  font-size: 0.58rem;
+  padding: 1px 5px;
+}
+
+.card-content {
+  padding: 0.5rem 0.55rem;
+}
+
+.card-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--slate-700);
+  line-height: 1.28;
+  margin-bottom: 0.2rem;
+  min-height: 2.55em;
+}
+
+.card-price-row {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+  gap: 0.3rem;
+}
+
+.current-price {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--slate-900);
+}
+
+.original-price {
+  font-size: 0.66rem;
+}
+
+.alibaba-meta-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  margin-top: auto;
+  margin-bottom: 0.35rem;
+}
+
+.card-sizes-pill-list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+  min-height: auto;
+}
+
+.size-mini-tag {
+  font-size: 0.56rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--slate-100);
+  color: var(--slate-600);
+  font-weight: 600;
+}
+
+.alibaba-stock-txt {
+  font-size: 0.58rem;
+  color: var(--slate-400);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.alibaba-stock-txt.out {
+  color: var(--danger-crimson);
+}
+
+.card-actions-row {
+  gap: 0.3rem;
+}
+
+.btn-card-order-wa {
+  height: 28px;
+  padding: 0 0.45rem;
+  font-size: 0.68rem;
+  border-radius: 5px;
+  gap: 0.3rem;
+}
+
+.btn-card-add-cart {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.45rem !important;
+  }
+  .card-media-wrapper {
+    padding: 5px !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  .product-card-img {
+    max-height: 128px !important;
+  }
+  .card-content {
+    padding: 0.42rem 0.48rem !important;
+  }
+  .card-title {
+    font-size: 0.71rem !important;
+    line-height: 1.25 !important;
+    min-height: 2.5em !important;
+    margin-bottom: 0.18rem !important;
+  }
+  .current-price {
+    font-size: 0.85rem !important;
+  }
+  .original-price {
+    font-size: 0.62rem !important;
+  }
+  .alibaba-meta-strip {
+    margin-bottom: 0.28rem !important;
+  }
+  .size-mini-tag {
+    font-size: 0.54rem !important;
+    padding: 1px 3.5px !important;
+  }
+  .alibaba-stock-txt {
+    font-size: 0.55rem !important;
+  }
+  .btn-card-order-wa {
+    height: 26px !important;
+    padding: 0 0.35rem !important;
+    font-size: 0.64rem !important;
+    gap: 0.25rem !important;
+  }
+  .btn-card-add-cart {
+    width: 26px !important;
+    height: 26px !important;
+  }
+}

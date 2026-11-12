@@ -594,7 +594,7 @@ class Store {
     message += `🔢 *Quantité :* ${quantity}\n`;
     message += `💰 *Prix unitaire :* ${this.formatPrice(priceToUse)}\n`;
     message += `💵 *Total :* ${this.formatPrice(priceToUse * quantity)}\n\n`;
-    message += `Pouvez-vous me confirmer la disponibilité et la livraison à Djibouti ? Merci !`;
+    message += `Merci !`;
 
     return message;
   }
@@ -618,9 +618,8 @@ class Store {
     });
 
     message += `\n==============================\n`;
-    message += `💰 *TOTAL DE LA COMMANDE : ${this.formatPrice(totalAmount)}*\n`;
-    message += `🚚 *Paiement :* À la livraison à Djibouti\n\n`;
-    message += `Merci de traiter ma commande dans les plus brefs délais !`;
+    message += `💰 *TOTAL DE LA COMMANDE : ${this.formatPrice(totalAmount)}*\n\n`;
+    message += `Merci !`;
 
     return message;
   }

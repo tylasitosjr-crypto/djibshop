@@ -613,32 +613,30 @@ class ClientApp {
       `;
     }
 
-    // Mini pilules de tailles
+    // Mini pilules de tailles (Format compact Alibaba)
     let sizesHtml = "";
     if (product.sizes && typeof product.sizes === "object") {
       const keys = Object.keys(product.sizes);
-      const displayKeys = keys.slice(0, 5);
-      sizesHtml = `<span class="sizes-label-mini">Tailles:</span>` + displayKeys.map(size => {
+      const displayKeys = keys.slice(0, 4);
+      sizesHtml = displayKeys.map(size => {
         const val = product.sizes[size];
         const stockCount = typeof val === "object" ? val.stock : val;
         const inStock = stockCount > 0;
         return `<span class="size-mini-tag ${inStock ? "" : "out"}">${size}</span>`;
       }).join("");
-      if (keys.length > 5) {
-        sizesHtml += `<span class="size-mini-tag">+${keys.length - 5}</span>`;
+      if (keys.length > 4) {
+        sizesHtml += `<span class="size-mini-tag">+${keys.length - 4}</span>`;
       }
     } else {
-      sizesHtml = `<span class="size-mini-tag" style="background: var(--slate-100); color: var(--slate-600);">Taille Unique</span>`;
+      sizesHtml = `<span class="size-mini-tag">Unique</span>`;
     }
 
-    // Statut du stock en direct sur la carte
+    // Petit indicateur discret de disponibilité style Alibaba
     let stockBadgeHtml = "";
     if (isOutOfStock) {
-      stockBadgeHtml = `<div class="card-stock-pill stock-pill-out">● Épuisé</div>`;
-    } else if (product.totalStock <= 3) {
-      stockBadgeHtml = `<div class="card-stock-pill stock-pill-low">🔥 Plus que ${product.totalStock} en stock</div>`;
+      stockBadgeHtml = `<span class="alibaba-stock-txt out">Épuisé</span>`;
     } else {
-      stockBadgeHtml = `<div class="card-stock-pill stock-pill-in">✓ En stock (${product.totalStock} disp.)</div>`;
+      stockBadgeHtml = `<span class="alibaba-stock-txt">${product.totalStock} disp.</span>`;
     }
 
     const isWishlisted = store.isInWishlist(product.id);
@@ -647,24 +645,15 @@ class ClientApp {
       <div class="card-media-wrapper" style="background-color: ${cardBgColor};">
         ${badgeHtml}
         <button type="button" class="card-wish-btn ${isWishlisted ? "active" : ""}" title="Ajouter aux favoris" aria-label="Favoris">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isWishlisted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="${isWishlisted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
         </button>
-        ${photoCount > 1 ? `<span class="card-photo-count-pill">📷 ${photoCount}</span>` : ""}
+        ${photoCount > 1 ? `<span class="card-photo-count-pill">1/${photoCount}</span>` : ""}
         <img src="${mainImage}" class="product-card-img" alt="${product.title}" loading="lazy">
         ${flashCountdownHtml}
       </div>
 
       <div class="card-content">
-        <div class="card-meta-line">
-          <span class="card-category-tag">${product.category}</span>
-          ${stockBadgeHtml}
-        </div>
-
         <h3 class="card-title" title="${product.title}">${product.title}</h3>
-
-        <div class="card-sizes-pill-list">
-          ${sizesHtml}
-        </div>
 
         <div class="card-price-row">
           <div class="price-wrap">
@@ -673,13 +662,20 @@ class ClientApp {
           </div>
         </div>
 
+        <div class="alibaba-meta-strip">
+          <div class="card-sizes-pill-list">
+            ${sizesHtml}
+          </div>
+          ${stockBadgeHtml}
+        </div>
+
         <div class="card-actions-row">
           <button type="button" class="btn-card-order-wa btn-quick-wa" ${isOutOfStock ? "disabled" : ""}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/></svg>
             <span>${isOutOfStock ? "Épuisé" : "Commander"}</span>
           </button>
-          <button type="button" class="btn-card-add-cart btn-quick-cart" title="Choisir la taille / Ajouter au panier" ${isOutOfStock ? "disabled" : ""}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <button type="button" class="btn-card-add-cart btn-quick-cart" title="Ajouter au panier" ${isOutOfStock ? "disabled" : ""}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           </button>
         </div>
       </div>
