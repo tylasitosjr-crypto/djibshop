@@ -181,17 +181,29 @@ class AdminApp {
     }
 
     // Réinitialisation & Export
-    document.getElementById("btn-reset-default-catalog")?.addEventListener("click", () => {
-      if (confirm("Réinitialiser le catalogue avec les données d'origine ? Vos modifications manuelles seront remplacées.")) {
-        store.resetCatalogToDefault();
-        this.renderAdminProductsTable();
-        this.updateStats();
-        alert("Catalogue réinitialisé avec succès !");
-      }
+    document.getElementById("btn-reset-default-catalog")?.addEventListener("click", async () => {
+      await store.syncFromSupabase();
+      this.renderAdminProductsTable();
+      this.updateStats();
+      alert("Catalogue synchronisé depuis le Cloud Supabase avec succès !");
     });
 
     document.getElementById("btn-export-catalog")?.addEventListener("click", () => {
       this.exportCatalogJson();
+    });
+
+    document.getElementById("btn-clear-all-orders")?.addEventListener("click", () => {
+      store.clearOrders();
+      this.renderAdminOrdersTable();
+      this.updateStats();
+    });
+
+    // Mise à jour automatique dès que Supabase synchronise les articles
+    window.addEventListener("catalog-synced", () => {
+      if (store.isAdminAuthenticated()) {
+        this.renderAdminProductsTable();
+        this.updateStats();
+      }
     });
   }
 
@@ -542,16 +554,48 @@ class AdminApp {
 
     toProcess.forEach(file => {
       if (!file.type.startsWith("image/")) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (this.uploadedImages.length < 4) {
-          this.uploadedImages.push(e.target.result);
+      this.compressAndReadImage(file).then(dataUrl => {
+        if (this.uploadedImages.length < 4 && dataUrl) {
+          this.uploadedImages.push(dataUrl);
           this.renderImagesPreview();
         }
-      };
-      reader.readAsDataURL(file);
+      });
     });
     event.target.value = "";
+  }
+
+  compressAndReadImage(file, maxSize = 900, quality = 0.82) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = Math.round((height * maxSize) / width);
+              width = maxSize;
+            } else {
+              width = Math.round((width * maxSize) / height);
+              height = maxSize;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
   }
 
   renderImagesPreview() {
@@ -825,9 +869,9 @@ class AdminApp {
       `;
 
       tr.querySelector(".btn-edit-p").addEventListener("click", () => this.editProduct(p.id));
-      tr.querySelector(".btn-del-p").addEventListener("click", () => {
+      tr.querySelector(".btn-del-p").addEventListener("click", async () => {
         if (confirm(`Supprimer définitivement "${p.title}" ?`)) {
-          store.deleteProduct(p.id);
+          await store.deleteProduct(p.id);
           this.renderAdminProductsTable();
           this.updateStats();
         }
@@ -846,7 +890,7 @@ class AdminApp {
     if (orders.length === 0) {
       this.adminOrdersTableBody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--slate-400);">
+          <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--slate-400);">
             Aucune commande enregistrée pour le moment.
           </td>
         </tr>
@@ -872,7 +916,15 @@ class AdminApp {
             ${ord.status}
           </span>
         </td>
+        <td style="text-align: right;">
+          <button type="button" class="action-btn action-btn-secondary btn-del-ord" data-id="${ord.id}" style="padding: 4px 8px; font-size: 0.75rem; color: var(--danger-crimson);">Suppr.</button>
+        </td>
       `;
+      tr.querySelector(".btn-del-ord")?.addEventListener("click", () => {
+        store.deleteOrder(ord.id);
+        this.renderAdminOrdersTable();
+        this.updateStats();
+      });
       this.adminOrdersTableBody.appendChild(tr);
     });
   }

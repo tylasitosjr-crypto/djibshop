@@ -1,11 +1,14 @@
 /**
- * DjibSHOP - Gestionnaire d'état & Persistance (LocalStorage + Supabase Cloud Sync)
+ * DjibSHOP - Gestionnaire d'état & Persistance (Cloud-First Supabase + Cache Intelligent)
  */
 
 const STORAGE_KEYS = {
-  PRODUCTS: "djibshop_catalog_v2",
-  CART: "djibshop_cart_v2",
-  ORDERS: "djibshop_orders_v2",
+  PRODUCTS: "djibshop_catalog_v3",
+  LEGACY_PRODUCTS: ["djibshop_catalog_v2", "djibshop_catalog_v1", "djibshop_products"],
+  CART: "djibshop_cart_v3",
+  LEGACY_CARTS: ["djibshop_cart_v2"],
+  ORDERS: "djibshop_orders_v3",
+  LEGACY_ORDERS: ["djibshop_orders_v2", "djibshop_orders_v1", "djibshop_orders"],
   ADMIN_AUTH: "djibshop_admin_session_v2",
   WISHLIST: "djibshop_wishlist_v2",
   SETTINGS: "djibshop_settings_v2"
@@ -23,76 +26,180 @@ const DEFAULT_SETTINGS = {
 
 class Store {
   constructor() {
+    this.memoryProducts = null;
+    this.isLoadingCatalog = true;
+    this.hasSyncedCloud = false;
+    this.syncInProgress = null;
     this.init();
   }
 
+  isLegacyDemoItem(item) {
+    if (!item) return false;
+    const legacyIds = typeof LEGACY_DEMO_IDS !== "undefined" ? LEGACY_DEMO_IDS : ["prod-v01", "prod-v02", "prod-c01", "prod-c02", "prod-a01", "prod-o01"];
+    const legacyRefs = typeof LEGACY_DEMO_REFS !== "undefined" ? LEGACY_DEMO_REFS : ["DJ-VET-001", "DJ-VET-002", "DJ-CHA-101", "DJ-CHA-102", "DJ-ACC-201", "DJ-AUT-301"];
+    return legacyIds.includes(item.id) || legacyRefs.includes(item.ref);
+  }
+
+  cleanProductsList(products) {
+    if (!Array.isArray(products)) return [];
+    return products.filter(p => p && p.id && !this.isLegacyDemoItem(p));
+  }
+
   async init() {
-    // 1. Initialiser le catalogue local
-    if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
-      this.saveProducts(INITIAL_PRODUCTS);
-    }
+    // 1. Purger systématiquement les anciens caches contenant les vieux articles démo
+    try {
+      STORAGE_KEYS.LEGACY_PRODUCTS.forEach(key => localStorage.removeItem(key));
+    } catch (e) {}
 
-    // 2. Initialiser les paramètres
-    if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
-    }
-
-    // 3. Initialiser le panier
-    if (!localStorage.getItem(STORAGE_KEYS.CART)) {
-      localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify([]));
-    }
-
-    // 4. Initialiser la liste de souhaits
-    if (!localStorage.getItem(STORAGE_KEYS.WISHLIST)) {
-      localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify([]));
-    }
-
-    // 5. Initialiser les commandes d'exemple si vide
-    if (!localStorage.getItem(STORAGE_KEYS.ORDERS)) {
-      const sampleOrders = [
-        {
-          id: "CMD-2026-0089",
-          date: "2026-02-12 11:20",
-          customerName: "Ahmed Mohamed",
-          customerPhone: "+253 77 12 34 56",
-          district: "Héron, Villa 45",
-          items: [
-            { title: "Chemise Blanche Lin Supérieur", size: "XL", quantity: 1, price: 4700 }
-          ],
-          total: 4700,
-          status: "Livré"
+    // 2. Charger le cache v3 propre s'il existe
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const cleaned = this.cleanProductsList(parsed);
+        this.memoryProducts = cleaned;
+        if (cleaned.length > 0) {
+          this.isLoadingCatalog = false;
         }
-      ];
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(sampleOrders));
+      }
+    } catch (e) {
+      this.memoryProducts = [];
     }
 
-    // 6. Synchronisation Supabase en arrière-plan si configuré
-    if (window.supabaseService && window.supabaseService.isConfigured) {
+    // 3. Initialiser les paramètres
+    try {
+      if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+      }
+    } catch (e) {}
+
+    // 4. Migrer/nettoyer le panier pour retirer tout ancien article démo
+    try {
+      let currentCart = [];
+      const savedCart = localStorage.getItem(STORAGE_KEYS.CART) || localStorage.getItem("djibshop_cart_v2");
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        if (Array.isArray(parsedCart)) {
+          currentCart = parsedCart.filter(item => item && !this.isLegacyDemoItem(item));
+        }
+      }
+      STORAGE_KEYS.LEGACY_CARTS.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(currentCart));
+    } catch (e) {}
+
+    // 5. Initialiser la liste de souhaits (sans les anciens IDs démo)
+    try {
+      const savedWish = localStorage.getItem(STORAGE_KEYS.WISHLIST);
+      if (savedWish) {
+        const parsedWish = JSON.parse(savedWish);
+        const legacyIds = typeof LEGACY_DEMO_IDS !== "undefined" ? LEGACY_DEMO_IDS : [];
+        const cleanWish = Array.isArray(parsedWish) ? parsedWish.filter(id => !legacyIds.includes(id)) : [];
+        localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(cleanWish));
+      } else {
+        localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify([]));
+      }
+    } catch (e) {}
+
+    // 6. Purger toutes les anciennes commandes WhatsApp (ex: CMD-2026-0089) et initialiser à vide
+    try {
+      STORAGE_KEYS.LEGACY_ORDERS.forEach(k => localStorage.removeItem(k));
+      if (!localStorage.getItem(STORAGE_KEYS.ORDERS)) {
+        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify([]));
+      } else {
+        // S'assurer qu'aucune ancienne commande démo (CMD-2026-0089) ne subsiste
+        const existingOrders = JSON.parse(localStorage.getItem(STORAGE_KEYS.ORDERS) || "[]");
+        const cleanOrders = Array.isArray(existingOrders)
+          ? existingOrders.filter(o => o && o.id !== "CMD-2026-0089")
+          : [];
+        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(cleanOrders));
+      }
+    } catch (e) {}
+
+    // 7. Synchronisation immédiate avec Supabase Cloud
+    await this.syncFromSupabase();
+
+    // 8. Re-synchroniser automatiquement quand l'utilisateur revient sur l'onglet ou retrouve la connexion
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        this.syncFromSupabase();
+      }
+    });
+
+    window.addEventListener("online", () => {
       this.syncFromSupabase();
-    }
+    });
+
+    // Rafraîchissement périodique discret toutes les 45 secondes
+    setInterval(() => {
+      if (document.visibilityState === "visible") {
+        this.syncFromSupabase();
+      }
+    }, 45000);
   }
 
   async syncFromSupabase() {
-    if (!window.supabaseService || !window.supabaseService.isConfigured) return;
-    try {
-      const remoteProducts = await window.supabaseService.fetchProducts();
-      if (remoteProducts && remoteProducts.length > 0) {
-        this.saveProducts(remoteProducts);
-        window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: remoteProducts } }));
-      }
-    } catch (e) {
-      console.warn("Échec de synchronisation Supabase", e);
+    if (!window.supabaseService || !window.supabaseService.isConfigured) {
+      this.isLoadingCatalog = false;
+      window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: this.getProducts() } }));
+      return;
     }
+
+    if (this.syncInProgress) {
+      return this.syncInProgress;
+    }
+
+    this.syncInProgress = (async () => {
+      try {
+        const remoteProducts = await window.supabaseService.fetchProducts();
+        if (Array.isArray(remoteProducts)) {
+          const cleanRemote = this.cleanProductsList(remoteProducts);
+          this.hasSyncedCloud = true;
+          this.isLoadingCatalog = false;
+          this.saveProducts(cleanRemote);
+          this.reconcileCartWithCatalog(cleanRemote);
+          window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: cleanRemote } }));
+        } else {
+          this.isLoadingCatalog = false;
+          window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: this.getProducts() } }));
+        }
+      } catch (e) {
+        console.warn("Échec de synchronisation Supabase", e);
+        this.isLoadingCatalog = false;
+        window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: this.getProducts() } }));
+      } finally {
+        this.syncInProgress = null;
+      }
+    })();
+
+    return this.syncInProgress;
+  }
+
+  reconcileCartWithCatalog(liveProducts) {
+    if (!Array.isArray(liveProducts) || liveProducts.length === 0) return;
+    try {
+      const cart = this.getCart();
+      if (cart.length === 0) return;
+      const liveIds = new Set(liveProducts.map(p => p.id));
+      const validCart = cart.filter(item => liveIds.has(item.id) && !this.isLegacyDemoItem(item));
+      if (validCart.length !== cart.length) {
+        this.saveCart(validCart);
+      }
+    } catch (e) {}
   }
 
   // --- CATALOGUE ---
   getProducts() {
+    if (Array.isArray(this.memoryProducts)) {
+      return this.memoryProducts;
+    }
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      return data ? JSON.parse(data) : INITIAL_PRODUCTS;
+      const parsed = data ? JSON.parse(data) : [];
+      this.memoryProducts = this.cleanProductsList(parsed);
+      return this.memoryProducts;
     } catch (e) {
       console.error("Erreur lecture catalogue", e);
-      return INITIAL_PRODUCTS;
+      return [];
     }
   }
 
@@ -102,11 +209,28 @@ class Store {
   }
 
   saveProducts(products) {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    const cleaned = this.cleanProductsList(products);
+    // Toujours conserver en mémoire vive (RAM) même si le quota localStorage du navigateur est atteint
+    this.memoryProducts = cleaned;
+    try {
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(cleaned));
+    } catch (e) {
+      console.warn("Quota localStorage atteint, conservation en mémoire vive et nettoyage des anciens caches.");
+      try {
+        STORAGE_KEYS.LEGACY_PRODUCTS.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(cleaned));
+      } catch (innerErr) {
+        // En cas de très grosses images base64 dépassant 5 Mo, le catalogue reste 100% fonctionnel via this.memoryProducts
+      }
+    }
   }
 
   async addProduct(productData) {
-    const products = this.getProducts();
+    if (!this.hasSyncedCloud && window.supabaseService && window.supabaseService.isConfigured) {
+      await this.syncFromSupabase();
+    }
+
+    const products = [...this.getProducts()];
     const id = "prod-" + Date.now();
     const prefix = productData.category === "vetements" ? "VET" :
                    productData.category === "chaussures" ? "CHA" :
@@ -128,22 +252,26 @@ class Store {
       id,
       ref,
       totalStock,
-      createdAt: new Date().toISOString().split("T")[0]
+      createdAt: new Date().toISOString()
     };
 
     products.unshift(newProduct);
     this.saveProducts(products);
 
-    // Sync cloud Supabase
     if (window.supabaseService && window.supabaseService.isConfigured) {
-      window.supabaseService.saveProduct(newProduct);
+      await window.supabaseService.saveProduct(newProduct);
     }
 
+    window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products } }));
     return newProduct;
   }
 
   async updateProduct(id, updatedFields) {
-    const products = this.getProducts();
+    if (!this.hasSyncedCloud && window.supabaseService && window.supabaseService.isConfigured) {
+      await this.syncFromSupabase();
+    }
+
+    const products = [...this.getProducts()];
     const index = products.findIndex(p => p.id === id);
     if (index === -1) return null;
 
@@ -168,11 +296,11 @@ class Store {
 
     this.saveProducts(products);
 
-    // Sync cloud Supabase
     if (window.supabaseService && window.supabaseService.isConfigured) {
-      window.supabaseService.saveProduct(products[index]);
+      await window.supabaseService.saveProduct(products[index]);
     }
 
+    window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products } }));
     return products[index];
   }
 
@@ -181,34 +309,34 @@ class Store {
     const filtered = products.filter(p => p.id !== id);
     this.saveProducts(filtered);
 
-    // Sync cloud Supabase
     if (window.supabaseService && window.supabaseService.isConfigured) {
-      window.supabaseService.deleteProduct(id);
+      await window.supabaseService.deleteProduct(id);
     }
 
+    window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products: filtered } }));
     return filtered;
   }
 
-  resetCatalogToDefault() {
-    this.saveProducts(INITIAL_PRODUCTS);
-    if (window.supabaseService && window.supabaseService.isConfigured) {
-      window.supabaseService.syncAllToSupabase(INITIAL_PRODUCTS);
-    }
-    return INITIAL_PRODUCTS;
+  async resetCatalogToDefault() {
+    await this.syncFromSupabase();
+    return this.getProducts();
   }
 
   // --- PANIER CLIENT ---
   getCart() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CART);
-      return data ? JSON.parse(data) : [];
+      const parsed = data ? JSON.parse(data) : [];
+      return Array.isArray(parsed) ? parsed.filter(item => item && !this.isLegacyDemoItem(item)) : [];
     } catch {
       return [];
     }
   }
 
   saveCart(cart) {
-    localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+    try {
+      localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+    } catch (e) {}
     window.dispatchEvent(new CustomEvent("cart-updated", { detail: { cart } }));
   }
 
@@ -322,7 +450,10 @@ class Store {
       wishlist.push(productId);
       added = true;
     }
-    localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(wishlist));
+    try {
+      localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(wishlist));
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent("wishlist-updated", { detail: { wishlist } }));
     return added;
   }
 
@@ -335,10 +466,27 @@ class Store {
   getOrders() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      return data ? JSON.parse(data) : [];
+      const parsed = data ? JSON.parse(data) : [];
+      return Array.isArray(parsed) ? parsed.filter(o => o && o.id !== "CMD-2026-0089") : [];
     } catch {
       return [];
     }
+  }
+
+  clearOrders() {
+    try {
+      STORAGE_KEYS.LEGACY_ORDERS.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify([]));
+    } catch (e) {}
+    return [];
+  }
+
+  deleteOrder(orderId) {
+    const orders = this.getOrders().filter(o => o.id !== orderId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    } catch (e) {}
+    return orders;
   }
 
   createOrder(customerInfo, cartItems, totalAmount) {
@@ -350,6 +498,7 @@ class Store {
       customerPhone: customerInfo.phone || "+253 77 ...",
       district: customerInfo.district || "Djibouti",
       items: cartItems.map(item => ({
+        id: item.id,
         title: item.title,
         size: item.size,
         quantity: item.quantity,
@@ -360,18 +509,20 @@ class Store {
     };
 
     orders.unshift(newOrder);
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    try {
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    } catch (e) {}
 
-    // Déduire des stocks
     this.decrementStockFromOrder(newOrder);
-
     return newOrder;
   }
 
   decrementStockFromOrder(order) {
-    const products = this.getProducts();
+    const products = [...this.getProducts()];
+    const updatedProds = [];
+
     order.items.forEach(item => {
-      const prod = products.find(p => p.title === item.title);
+      const prod = products.find(p => (item.id && p.id === item.id) || p.title === item.title);
       if (prod) {
         if (item.size && prod.sizes && prod.sizes[item.size] !== undefined) {
           if (typeof prod.sizes[item.size] === "object") {
@@ -379,7 +530,6 @@ class Store {
           } else {
             prod.sizes[item.size] = Math.max(0, prod.sizes[item.size] - item.quantity);
           }
-          // Recalcul total
           prod.totalStock = Object.values(prod.sizes).reduce((sum, s) => {
             const qty = typeof s === "object" ? s.stock : s;
             return sum + (parseInt(qty) || 0);
@@ -387,9 +537,15 @@ class Store {
         } else {
           prod.totalStock = Math.max(0, prod.totalStock - item.quantity);
         }
+        updatedProds.push(prod);
       }
     });
+
     this.saveProducts(products);
+
+    if (window.supabaseService && window.supabaseService.isConfigured && updatedProds.length > 0) {
+      updatedProds.forEach(p => window.supabaseService.saveProduct(p));
+    }
   }
 
   // --- AUTHENTIFICATION ADMIN ---
@@ -444,7 +600,7 @@ class Store {
   }
 
   buildCartOrderMessage(customerInfo, cartItems, totalAmount) {
-    let message = `*NOUVELLE COMMANDE DJIBHOP* 🛍️\n`;
+    let message = `*NOUVELLE COMMANDE DJIBSHOP* 🛍️\n`;
     message += `==============================\n\n`;
 
     if (customerInfo && (customerInfo.name || customerInfo.district || customerInfo.phone)) {
@@ -455,7 +611,7 @@ class Store {
 
     message += `📋 *DÉTAIL DU PANIER :*\n`;
     cartItems.forEach((item, index) => {
-      message += `${index + 1}. *${item.title}*\n`;
+      message += `${index + 1}. *${item.title}* (${item.ref || ""})\n`;
       if (item.size) message += `   • Taille : ${item.size}\n`;
       message += `   • Quantité : ${item.quantity}\n`;
       message += `   • Prix : ${this.formatPrice(item.price)} (${this.formatPrice(item.price * item.quantity)})\n`;
@@ -469,7 +625,6 @@ class Store {
     return message;
   }
 
-  // Gestion de l'application préférée (WhatsApp Normal par défaut ou WhatsApp Business)
   getPreferredWhatsAppApp() {
     const pref = localStorage.getItem("djibshop_wa_app");
     return (pref === "business") ? "business" : "normal";
@@ -481,7 +636,6 @@ class Store {
     window.dispatchEvent(new CustomEvent("wa-pref-changed", { detail: cleanType }));
   }
 
-  // Génère l'URL WhatsApp optimale selon le système d'exploitation et l'application choisie (Business ou Normal)
   getWhatsAppUrl(message, appType = null) {
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
@@ -494,21 +648,17 @@ class Store {
     const chosenApp = appType || this.getPreferredWhatsAppApp();
 
     if (isAndroid) {
-      // Intent natif Android : lance directement l'application WhatsApp sélectionnée sans passer par api.whatsapp.com
       const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
       return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;package=${pkg};end;`;
     } else if (isIOS) {
-      // iPhone / iPad : schéma direct de l'application
       return `whatsapp://send?phone=${phone}&text=${encoded}`;
     } else if (isMobile) {
       return `https://wa.me/${phone}?text=${encoded}`;
     } else {
-      // Ordinateur : WhatsApp Web direct dans la conversation
       return `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
     }
   }
 
-  // Ouvre instantanément WhatsApp du vendeur sans passer par les détours ou api.whatsapp
   openWhatsApp(message, appType = null) {
     const targetUrl = this.getWhatsAppUrl(message, appType);
     const ua = navigator.userAgent || "";
@@ -521,7 +671,6 @@ class Store {
       return;
     }
 
-    // Déclenchement par un lien natif invisible cliqué pour respecter les règles de sécurité Chrome Android et iOS
     const link = document.createElement("a");
     link.href = targetUrl;
     link.target = "_self";

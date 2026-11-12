@@ -1,11 +1,6 @@
 /**
  * DjibSHOP - Contrôleur de la Boutique Client (Storefront)
- * Style E-Commerce Haute Précision Alibaba & Shein
- * - Cartes compactes 2 colonnes sur mobile
- * - Vente flash avec compte à rebours interactif
- * - Prix dynamique selon la taille sélectionnée
- * - 3 Finitions Studio Fond (Blanc 100%, Doux Gris, Doux Bleu)
- * - Galerie 1 à 4 photos
+ * Expérience Client Premium, Rapide & Synchronisée en Temps Réel
  */
 
 class ClientApp {
@@ -24,6 +19,7 @@ class ClientApp {
     this.bindEvents();
     this.renderProducts();
     this.updateCartBadge();
+    this.updateWishlistBadge();
     this.startGlobalFlashSaleTicker();
   }
 
@@ -40,6 +36,13 @@ class ClientApp {
     this.categoryNav = document.getElementById("category-nav-list");
     this.sortSelect = document.getElementById("catalog-sort-select");
     this.inStockToggle = document.getElementById("filter-in-stock-only");
+    this.manualRefreshBtn = document.getElementById("btn-manual-refresh");
+    this.headerWishlistBtn = document.getElementById("header-wishlist-toggle-btn");
+
+    // Navigation Mobile
+    this.mobileNavHome = document.getElementById("mobile-nav-home");
+    this.mobileNavSearch = document.getElementById("mobile-nav-search");
+    this.mobileNavWishlist = document.getElementById("mobile-nav-wishlist");
 
     // Modal Produit
     this.productModalBackdrop = document.getElementById("product-detail-modal");
@@ -65,6 +68,11 @@ class ClientApp {
     this.modalWaAppToggle = document.getElementById("modal-wa-app-toggle");
     this.modalBtnWaLabel = document.getElementById("modal-btn-wa-label");
 
+    // Modal Info (Livraison / Guide des tailles)
+    this.infoModalBackdrop = document.getElementById("info-helper-modal");
+    this.infoModalCloseBtn = document.getElementById("btn-close-info-modal");
+    this.infoModalBody = document.getElementById("info-modal-body");
+
     // Tiroir Panier (Cart Drawer)
     this.cartDrawerBackdrop = document.getElementById("cart-drawer-backdrop");
     this.cartDrawerCloseBtn = document.getElementById("cart-drawer-close");
@@ -82,7 +90,7 @@ class ClientApp {
   }
 
   bindEvents() {
-    // Recherche en direct
+    // Recherche en direct (cherche aussi par taille disponible !)
     if (this.searchInput) {
       this.searchInput.addEventListener("input", (e) => {
         this.currentSearchQuery = e.target.value.toLowerCase().trim();
@@ -105,12 +113,50 @@ class ClientApp {
     // Catégories
     if (this.categoryNav) {
       this.categoryNav.querySelectorAll(".category-nav-item").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          this.categoryNav.querySelectorAll(".category-nav-item").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          this.selectedCategory = btn.dataset.category;
-          this.renderProducts();
+        btn.addEventListener("click", () => {
+          this.selectCategory(btn.dataset.category);
         });
+      });
+    }
+
+    // Boutons Favoris Header & Mobile
+    if (this.headerWishlistBtn) {
+      this.headerWishlistBtn.addEventListener("click", () => {
+        this.selectCategory(this.selectedCategory === "wishlist" ? "all" : "wishlist");
+        document.getElementById("catalog-anchor")?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
+
+    if (this.mobileNavHome) {
+      this.mobileNavHome.addEventListener("click", () => {
+        this.selectCategory("all");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+
+    if (this.mobileNavSearch) {
+      this.mobileNavSearch.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setTimeout(() => this.searchInput?.focus(), 200);
+      });
+    }
+
+    if (this.mobileNavWishlist) {
+      this.mobileNavWishlist.addEventListener("click", () => {
+        this.selectCategory(this.selectedCategory === "wishlist" ? "all" : "wishlist");
+        document.getElementById("catalog-anchor")?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
+
+    // Actualisation manuelle depuis Supabase
+    if (this.manualRefreshBtn) {
+      this.manualRefreshBtn.addEventListener("click", async () => {
+        this.manualRefreshBtn.classList.add("spinning");
+        await store.syncFromSupabase();
+        setTimeout(() => {
+          this.manualRefreshBtn.classList.remove("spinning");
+        }, 400);
+        window.showToast("Catalogue mis à jour en direct !", "success");
       });
     }
 
@@ -139,6 +185,31 @@ class ClientApp {
         if (e.target === this.productModalBackdrop) this.closeProductModal();
       });
     }
+
+    // Modal Info
+    if (this.infoModalCloseBtn) {
+      this.infoModalCloseBtn.addEventListener("click", () => this.closeInfoModal());
+    }
+    if (this.infoModalBackdrop) {
+      this.infoModalBackdrop.addEventListener("click", (e) => {
+        if (e.target === this.infoModalBackdrop) this.closeInfoModal();
+      });
+    }
+
+    document.querySelectorAll("[data-info-modal]").forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.openInfoModal(link.dataset.infoModal);
+      });
+    });
+
+    document.querySelectorAll("[data-footer-cat]").forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.selectCategory(link.dataset.footerCat);
+        document.getElementById("catalog-anchor")?.scrollIntoView({ behavior: "smooth" });
+      });
+    });
 
     // Quantité dans la modal
     if (this.modalQtyMinus) {
@@ -189,6 +260,15 @@ class ClientApp {
       }
     });
 
+    // Mises à jour des favoris
+    window.addEventListener("wishlist-updated", () => {
+      this.updateWishlistBadge();
+      this.updateCategoryCounts();
+      if (this.selectedCategory === "wishlist") {
+        this.renderProducts();
+      }
+    });
+
     // Synchronisation Cloud Supabase
     window.addEventListener("catalog-synced", () => {
       this.renderProducts();
@@ -199,6 +279,7 @@ class ClientApp {
       if (e.key === "Escape") {
         this.closeProductModal();
         this.closeCartDrawer();
+        this.closeInfoModal();
       }
     });
 
@@ -254,6 +335,49 @@ class ClientApp {
     syncWaAppDisplay(store.getPreferredWhatsAppApp());
   }
 
+  selectCategory(cat) {
+    this.selectedCategory = cat || "all";
+    if (this.categoryNav) {
+      this.categoryNav.querySelectorAll(".category-nav-item").forEach(b => {
+        b.classList.toggle("active", b.dataset.category === this.selectedCategory);
+      });
+    }
+    if (this.mobileNavHome && this.mobileNavWishlist) {
+      this.mobileNavHome.classList.toggle("active", this.selectedCategory !== "wishlist");
+      this.mobileNavWishlist.classList.toggle("active", this.selectedCategory === "wishlist");
+    }
+    this.renderProducts();
+  }
+
+  updateCategoryCounts() {
+    const allProducts = store.getProducts();
+    const wishlistIds = store.getWishlist();
+    const counts = {
+      all: allProducts.length,
+      vetements: allProducts.filter(p => p.category === "vetements").length,
+      chaussures: allProducts.filter(p => p.category === "chaussures").length,
+      accessoires: allProducts.filter(p => p.category === "accessoires").length,
+      autres: allProducts.filter(p => p.category === "autres").length,
+      wishlist: allProducts.filter(p => wishlistIds.includes(p.id)).length
+    };
+
+    document.querySelectorAll("[data-cat-count]").forEach(el => {
+      const cat = el.dataset.catCount;
+      const val = counts[cat] || 0;
+      el.textContent = val > 0 ? val : "";
+      el.style.display = val > 0 ? "inline-flex" : "none";
+    });
+  }
+
+  updateWishlistBadge() {
+    const allIds = new Set(store.getProducts().map(p => p.id));
+    const count = store.getWishlist().filter(id => allIds.size === 0 || allIds.has(id)).length;
+    document.querySelectorAll(".wishlist-count-display").forEach(badge => {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? "inline-flex" : "none";
+    });
+  }
+
   // --- COMPTE À REBOURS VENTES FLASH ---
   startGlobalFlashSaleTicker() {
     setInterval(() => {
@@ -273,25 +397,66 @@ class ClientApp {
     }, 1000);
   }
 
+  renderSkeletonCards(count = 6) {
+    if (!this.productsGrid) return;
+    if (this.catalogCountElem) {
+      this.catalogCountElem.textContent = "Synchronisation des articles en direct...";
+    }
+    let html = "";
+    for (let i = 0; i < count; i++) {
+      html += `
+        <div class="product-card skeleton-card">
+          <div class="card-media-wrapper skeleton-shimmer"></div>
+          <div class="card-content">
+            <div class="skeleton-line skeleton-shimmer" style="width: 45%; height: 12px; margin-bottom: 8px;"></div>
+            <div class="skeleton-line skeleton-shimmer" style="width: 85%; height: 18px; margin-bottom: 10px;"></div>
+            <div class="skeleton-line skeleton-shimmer" style="width: 65%; height: 16px; margin-bottom: 14px;"></div>
+            <div class="skeleton-line skeleton-shimmer" style="width: 55%; height: 22px; margin-bottom: 12px;"></div>
+            <div class="skeleton-line skeleton-shimmer" style="width: 100%; height: 36px; border-radius: 8px;"></div>
+          </div>
+        </div>
+      `;
+    }
+    this.productsGrid.innerHTML = html;
+  }
+
   // --- RENDU DU CATALOGUE PRODUITS ---
   renderProducts() {
     if (!this.productsGrid) return;
 
-    let products = store.getProducts();
+    let products = [...store.getProducts()];
+    this.updateCategoryCounts();
+    this.updateWishlistBadge();
 
-    // Filtre Catégorie
-    if (this.selectedCategory !== "all") {
+    // Si le catalogue est en cours de chargement initial depuis Supabase, afficher les cartes squelettes animées
+    if (store.isLoadingCatalog && products.length === 0) {
+      this.renderSkeletonCards(6);
+      return;
+    }
+
+    // Filtre Catégorie ou Favoris
+    if (this.selectedCategory === "wishlist") {
+      const wishIds = store.getWishlist();
+      products = products.filter(p => wishIds.includes(p.id));
+    } else if (this.selectedCategory !== "all") {
       products = products.filter(p => p.category === this.selectedCategory);
     }
 
-    // Filtre Recherche
+    // Filtre Recherche (titre, réf, catégorie, description, ou taille ex: "XL", "42")
     if (this.currentSearchQuery) {
-      products = products.filter(p => 
-        p.title.toLowerCase().includes(this.currentSearchQuery) ||
-        p.ref.toLowerCase().includes(this.currentSearchQuery) ||
-        p.category.toLowerCase().includes(this.currentSearchQuery) ||
-        (p.description && p.description.toLowerCase().includes(this.currentSearchQuery))
-      );
+      const q = this.currentSearchQuery;
+      products = products.filter(p => {
+        const matchText =
+          (p.title && p.title.toLowerCase().includes(q)) ||
+          (p.ref && p.ref.toLowerCase().includes(q)) ||
+          (p.category && p.category.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q));
+        if (matchText) return true;
+        if (p.sizes && typeof p.sizes === "object") {
+          return Object.keys(p.sizes).some(sizeKey => sizeKey.toLowerCase() === q);
+        }
+        return false;
+      });
     }
 
     // Filtre En stock
@@ -299,56 +464,62 @@ class ClientApp {
       products = products.filter(p => p.totalStock > 0);
     }
 
-    // Tri
+    // Tri précis (avec départage par ID timestamp pour que le dernier article ajouté soit toujours en tête)
     if (this.currentSortBy === "price-asc") {
       products.sort((a, b) => a.price - b.price);
     } else if (this.currentSortBy === "price-desc") {
       products.sort((a, b) => b.price - a.price);
     } else if (this.currentSortBy === "name") {
-      products.sort((a, b) => a.title.localeCompare(b.title));
+      products.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     } else {
-      products.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      products.sort((a, b) => {
+        const dateCmp = (b.createdAt || "").localeCompare(a.createdAt || "");
+        if (dateCmp !== 0) return dateCmp;
+        return (b.id || "").localeCompare(a.id || "");
+      });
     }
 
     // Compteur
     if (this.catalogCountElem) {
-      this.catalogCountElem.textContent = `${products.length} article${products.length > 1 ? "s" : ""}`;
+      const labelPrefix = this.selectedCategory === "wishlist" ? "dans vos favoris" : "disponible" + (products.length > 1 ? "s" : "");
+      this.catalogCountElem.textContent = `${products.length} article${products.length > 1 ? "s" : ""} ${labelPrefix}`;
     }
 
     if (products.length === 0) {
       if (this.flashShowcaseSection) this.flashShowcaseSection.style.display = "none";
       if (this.regularCatalogTitleBar) this.regularCatalogTitleBar.style.display = "none";
 
+      const isWishlistEmpty = this.selectedCategory === "wishlist";
       this.productsGrid.innerHTML = `
-        <div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--slate-200);">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--slate-400)" stroke-width="1.5" style="margin: 0 auto 1rem;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-800); margin-bottom: 0.5rem;">Aucun article ne correspond à votre sélection</h3>
-          <p style="font-size: 0.875rem; color: var(--slate-500); max-width: 420px; margin: 0 auto 1.5rem;">Essayez d'autres mots-clés ou réinitialisez les filtres.</p>
-          <button class="action-btn action-btn-secondary" id="btn-reset-filters" style="margin: 0 auto;">Afficher tout le catalogue</button>
+        <div class="empty-catalog-box">
+          <div class="empty-catalog-icon">
+            ${isWishlistEmpty
+              ? `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+              : `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`
+            }
+          </div>
+          <h3>${isWishlistEmpty ? "Vous n'avez pas encore d'articles favoris" : "Aucun article trouvé"}</h3>
+          <p>${isWishlistEmpty ? "Cliquez sur le cœur ❤️ en haut d'un article pour le retrouver facilement ici." : "Essayez d'autres mots-clés ou affichez l'ensemble du catalogue."}</p>
+          <button class="action-btn action-btn-cart" id="btn-reset-filters" style="margin: 0 auto;">Voir tout le catalogue</button>
         </div>
       `;
 
       document.getElementById("btn-reset-filters")?.addEventListener("click", () => {
-        this.selectedCategory = "all";
         this.currentSearchQuery = "";
         this.onlyInStock = false;
         if (this.searchInput) this.searchInput.value = "";
+        if (this.searchClearBtn) this.searchClearBtn.style.display = "none";
         if (this.inStockToggle) this.inStockToggle.checked = false;
-        if (this.categoryNav) {
-          this.categoryNav.querySelectorAll(".category-nav-item").forEach(b => {
-            b.classList.toggle("active", b.dataset.category === "all");
-          });
-        }
-        this.renderProducts();
+        this.selectCategory("all");
       });
       return;
     }
 
-    // Séparation des produits Vente Flash en haut et Produits Réguliers en bas (Shein Style)
+    // Séparation des produits Vente Flash en haut et Produits Réguliers en bas
     const flashProducts = products.filter(p => p.flashSale);
     const regularProducts = products.filter(p => !p.flashSale);
 
-    // 1. Vitrine Ventes Flash du Jour en haut
+    // 1. Vitrine Ventes Flash du Jour
     if (this.flashShowcaseSection && this.flashProductsContainer) {
       if (flashProducts.length > 0) {
         this.flashShowcaseSection.style.display = "block";
@@ -357,14 +528,13 @@ class ClientApp {
           this.flashProductsContainer.appendChild(this.createProductCard(prod));
         });
 
-        // Configurer le compte à rebours principal sur la fin la plus proche
         if (this.showcaseFlashTimer) {
           const nextEnding = flashProducts.find(p => p.flashSaleEnds)?.flashSaleEnds || new Date(Date.now() + 18 * 3600 * 1000).toISOString();
           this.showcaseFlashTimer.dataset.end = nextEnding;
         }
 
         if (this.regularCatalogTitleBar) {
-          this.regularCatalogTitleBar.style.display = "flex";
+          this.regularCatalogTitleBar.style.display = regularProducts.length > 0 ? "flex" : "none";
         }
       } else {
         this.flashShowcaseSection.style.display = "none";
@@ -382,13 +552,14 @@ class ClientApp {
     });
   }
 
-  // --- CRÉATION DE LA CARTE PRODUIT (SHEIN / ALIBABA ULTRA-COMPACTE 2 COLONNES) ---
+  // --- CRÉATION DE LA CARTE PRODUIT (DESIGN E-COMMERCE HAUT DE GAMME) ---
   createProductCard(product) {
     const card = document.createElement("article");
     card.className = "product-card";
     card.dataset.id = product.id;
 
     const mainImage = (product.images && product.images[0]) || "";
+    const photoCount = (product.images && product.images.length) || 1;
     const isOutOfStock = product.totalStock <= 0;
 
     // Arrière-plan Studio
@@ -398,48 +569,6 @@ class ClientApp {
       "studio-blue": "#EFF6FF"
     };
     const cardBgColor = bgMap[product.bgStyle] || "#FFFFFF";
-
-    // Badges & Vente Flash
-    let badgeHtml = "";
-    if (product.flashSale) {
-      badgeHtml = `
-        <span class="card-badge badge-flash-sale">
-          ⚡ FLASH
-        </span>
-      `;
-    } else if (product.badge && product.badge !== "Aucun") {
-      const badgeClass = `badge-${product.badge.toLowerCase()}`;
-      badgeHtml = `<span class="card-badge ${badgeClass}">${product.badge}</span>`;
-    }
-
-    // Bannière Compte à Rebours Flash
-    let flashCountdownHtml = "";
-    if (product.flashSale && product.flashSaleEnds) {
-      flashCountdownHtml = `
-        <div class="card-flash-timer-bar">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span class="flash-timer-display" data-end="${product.flashSaleEnds}">Calcul...</span>
-        </div>
-      `;
-    }
-
-    // Mini pilules de tailles Shein
-    let sizesHtml = "";
-    if (product.sizes && typeof product.sizes === "object") {
-      const keys = Object.keys(product.sizes);
-      const displayKeys = keys.slice(0, 4);
-      sizesHtml = displayKeys.map(size => {
-        const val = product.sizes[size];
-        const stockCount = typeof val === "object" ? val.stock : val;
-        const inStock = stockCount > 0;
-        return `<span class="size-mini-tag ${inStock ? "" : "out"}">${size}</span>`;
-      }).join("");
-      if (keys.length > 4) {
-        sizesHtml += `<span class="size-mini-tag">+${keys.length - 4}</span>`;
-      }
-    } else {
-      sizesHtml = `<span class="size-mini-tag" style="background: transparent; color: var(--slate-400); font-size: 0.6875rem;">Unique</span>`;
-    }
 
     // Prix calculé (min price si plusieurs tailles)
     let displayPrice = product.price;
@@ -456,30 +585,71 @@ class ClientApp {
       }
     }
 
-    // Urgence de stock Flash Sale (Shein Style)
-    let flashUrgencyHtml = "";
+    // Calcul remise %
+    let discountPercent = 0;
+    if (product.originalPrice && product.originalPrice > displayPrice) {
+      discountPercent = Math.round(((product.originalPrice - displayPrice) / product.originalPrice) * 100);
+    }
+
+    // Badges & Vente Flash
+    let badgeHtml = "";
     if (product.flashSale) {
-      flashUrgencyHtml = `
-        <div class="flash-stock-urgency">
-          <div class="flash-stock-bar-wrap">
-            <div class="flash-stock-bar-fill" style="width: 78%;"></div>
-          </div>
-          <div class="flash-stock-text">
-            <span>⚡ Vente Flash</span> • <span>Stock limité</span>
-          </div>
+      badgeHtml = `<span class="card-badge badge-flash-sale">⚡ FLASH</span>`;
+    } else if (discountPercent > 0) {
+      badgeHtml = `<span class="card-badge badge-promo">-${discountPercent}%</span>`;
+    } else if (product.badge && product.badge !== "Aucun") {
+      const badgeClass = `badge-${product.badge.toLowerCase()}`;
+      badgeHtml = `<span class="card-badge ${badgeClass}">${product.badge}</span>`;
+    }
+
+    // Bannière Compte à Rebours Flash
+    let flashCountdownHtml = "";
+    if (product.flashSale && product.flashSaleEnds) {
+      flashCountdownHtml = `
+        <div class="card-flash-timer-bar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span class="flash-timer-display" data-end="${product.flashSaleEnds}">Calcul...</span>
         </div>
       `;
     }
 
+    // Mini pilules de tailles
+    let sizesHtml = "";
+    if (product.sizes && typeof product.sizes === "object") {
+      const keys = Object.keys(product.sizes);
+      const displayKeys = keys.slice(0, 5);
+      sizesHtml = `<span class="sizes-label-mini">Tailles:</span>` + displayKeys.map(size => {
+        const val = product.sizes[size];
+        const stockCount = typeof val === "object" ? val.stock : val;
+        const inStock = stockCount > 0;
+        return `<span class="size-mini-tag ${inStock ? "" : "out"}">${size}</span>`;
+      }).join("");
+      if (keys.length > 5) {
+        sizesHtml += `<span class="size-mini-tag">+${keys.length - 5}</span>`;
+      }
+    } else {
+      sizesHtml = `<span class="size-mini-tag" style="background: var(--slate-100); color: var(--slate-600);">Taille Unique</span>`;
+    }
+
+    // Statut du stock en direct sur la carte
+    let stockBadgeHtml = "";
+    if (isOutOfStock) {
+      stockBadgeHtml = `<div class="card-stock-pill stock-pill-out">● Épuisé</div>`;
+    } else if (product.totalStock <= 3) {
+      stockBadgeHtml = `<div class="card-stock-pill stock-pill-low">🔥 Plus que ${product.totalStock} en stock</div>`;
+    } else {
+      stockBadgeHtml = `<div class="card-stock-pill stock-pill-in">✓ En stock (${product.totalStock} disp.)</div>`;
+    }
+
     const isWishlisted = store.isInWishlist(product.id);
 
-    // Structure de la carte compacte
     card.innerHTML = `
       <div class="card-media-wrapper" style="background-color: ${cardBgColor};">
         ${badgeHtml}
-        <button type="button" class="card-wish-btn ${isWishlisted ? "active" : ""}" title="Favoris" aria-label="Favoris">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="${isWishlisted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        <button type="button" class="card-wish-btn ${isWishlisted ? "active" : ""}" title="Ajouter aux favoris" aria-label="Favoris">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isWishlisted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
         </button>
+        ${photoCount > 1 ? `<span class="card-photo-count-pill">📷 ${photoCount}</span>` : ""}
         <img src="${mainImage}" class="product-card-img" alt="${product.title}" loading="lazy">
         ${flashCountdownHtml}
       </div>
@@ -487,7 +657,7 @@ class ClientApp {
       <div class="card-content">
         <div class="card-meta-line">
           <span class="card-category-tag">${product.category}</span>
-          <span class="card-sku">${product.ref}</span>
+          ${stockBadgeHtml}
         </div>
 
         <h3 class="card-title" title="${product.title}">${product.title}</h3>
@@ -495,7 +665,6 @@ class ClientApp {
         <div class="card-sizes-pill-list">
           ${sizesHtml}
         </div>
-        ${flashUrgencyHtml}
 
         <div class="card-price-row">
           <div class="price-wrap">
@@ -506,17 +675,16 @@ class ClientApp {
 
         <div class="card-actions-row">
           <button type="button" class="btn-card-order-wa btn-quick-wa" ${isOutOfStock ? "disabled" : ""}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/></svg>
-            <span>Commander</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/></svg>
+            <span>${isOutOfStock ? "Épuisé" : "Commander"}</span>
           </button>
-          <button type="button" class="btn-card-add-cart btn-quick-cart" title="Ajouter au panier" ${isOutOfStock ? "disabled" : ""}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <button type="button" class="btn-card-add-cart btn-quick-cart" title="Choisir la taille / Ajouter au panier" ${isOutOfStock ? "disabled" : ""}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           </button>
         </div>
       </div>
     `;
 
-    // Clic pour ouvrir la modal détaillée
     card.addEventListener("click", (e) => {
       if (e.target.closest(".card-wish-btn") || e.target.closest(".btn-quick-wa") || e.target.closest(".btn-quick-cart")) {
         return;
@@ -524,13 +692,11 @@ class ClientApp {
       this.openProductModal(product);
     });
 
-    // Clic rapide WhatsApp direct (1 clic instantané pour articles sans tailles)
     const quickWaBtn = card.querySelector(".btn-quick-wa");
     quickWaBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const hasSizes = product.sizes && typeof product.sizes === "object" && Object.keys(product.sizes).length > 0;
       if (!hasSizes) {
-        // Redirection directe instantanée sans étape intermédiaire
         const message = store.buildDirectOrderMessage(product, null, 1, product.price);
         store.openWhatsApp(message);
       } else {
@@ -538,51 +704,48 @@ class ClientApp {
       }
     });
 
-    // Clic rapide Panier
     const quickCartBtn = card.querySelector(".btn-quick-cart");
     quickCartBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.openProductModal(product);
     });
 
-    // Favoris
     const wishBtn = card.querySelector(".card-wish-btn");
     wishBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const added = store.toggleWishlist(product.id);
       wishBtn.classList.toggle("active", added);
       wishBtn.querySelector("svg").setAttribute("fill", added ? "currentColor" : "none");
-      window.showToast(added ? "Ajouté à vos favoris" : "Retiré de vos favoris", "info");
+      window.showToast(added ? "Ajouté à vos favoris ❤️" : "Retiré de vos favoris", "info");
     });
 
     return card;
   }
 
-  // --- MODAL DÉTAIL PRODUIT AVEC TAILLE DYNAMIQUE ET PRIX PROGRESSIF ---
+  // --- MODAL DÉTAIL PRODUIT ---
   openProductModal(product) {
     this.activeProductModal = product;
     this.selectedModalSize = null;
     this.selectedModalPrice = product.price;
     this.modalQuantity = 1;
 
-    // Métadonnées
     this.modalTitle.textContent = product.title;
     this.modalRef.textContent = `Réf : ${product.ref}`;
     this.modalCategoryBadge.textContent = product.category;
     this.modalCurrentPrice.textContent = store.formatPrice(product.price);
 
-    if (product.originalPrice) {
+    if (product.originalPrice && product.originalPrice > product.price) {
       this.modalOldPrice.textContent = store.formatPrice(product.originalPrice);
       this.modalOldPrice.style.display = "inline";
       const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
-      this.modalDiscountTag.textContent = `-${discount}%`;
+      const savedAmount = product.originalPrice - product.price;
+      this.modalDiscountTag.textContent = `-${discount}% (Économisez ${store.formatPrice(savedAmount)})`;
       this.modalDiscountTag.style.display = "inline-block";
     } else {
       this.modalOldPrice.style.display = "none";
       this.modalDiscountTag.style.display = "none";
     }
 
-    // Bannière Vente Flash dans la modal
     if (this.modalFlashSaleBanner) {
       if (product.flashSale && product.flashSaleEnds) {
         this.modalFlashSaleBanner.style.display = "flex";
@@ -595,10 +758,16 @@ class ClientApp {
       }
     }
 
-    this.modalDescription.textContent = product.description || "Aucune description détaillée disponible pour cet article.";
+    // Description intelligente si non renseignée en base
+    const cleanDesc = (product.description || "").trim();
+    if (cleanDesc) {
+      this.modalDescription.textContent = cleanDesc;
+    } else {
+      this.modalDescription.textContent = `${product.title} — Article de qualité supérieure disponible immédiatement chez DjibSHOP. Tissu respirant et finitions soignées. Sélectionnez votre taille ci-dessous et commandez en 1 clic sur WhatsApp avec livraison rapide à Djibouti et paiement à la réception.`;
+    }
+
     this.modalQtyInput.value = 1;
 
-    // Arrière-plan Studio dans la modal
     const bgMap = {
       "studio-white": "#FFFFFF",
       "studio-gray": "#F1F5F9",
@@ -609,35 +778,32 @@ class ClientApp {
       this.modalGalleryMainWrap.style.backgroundColor = modalBg;
     }
 
-    // Galerie 1 à 4 photos
-    const images = (product.images && product.images.length > 0) 
-      ? product.images 
-      : ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80"];
-
-    this.modalGalleryMain.src = images[0];
+    const images = (product.images && product.images.length > 0) ? product.images : [];
+    this.modalGalleryMain.src = images[0] || "";
     this.modalGalleryMain.alt = product.title;
 
     this.modalThumbnails.innerHTML = "";
-    images.forEach((imgUrl, idx) => {
-      const thumbBtn = document.createElement("button");
-      thumbBtn.className = `modal-thumbnail-btn ${idx === 0 ? "active" : ""}`;
-      thumbBtn.style.backgroundColor = modalBg;
-      thumbBtn.innerHTML = `<img src="${imgUrl}" alt="Vignette ${idx + 1}">`;
-      thumbBtn.addEventListener("click", () => {
-        this.modalGalleryMain.src = imgUrl;
-        this.modalThumbnails.querySelectorAll(".modal-thumbnail-btn").forEach(b => b.classList.remove("active"));
-        thumbBtn.classList.add("active");
+    if (images.length > 1) {
+      this.modalThumbnails.style.display = "flex";
+      images.forEach((imgUrl, idx) => {
+        const thumbBtn = document.createElement("button");
+        thumbBtn.className = `modal-thumbnail-btn ${idx === 0 ? "active" : ""}`;
+        thumbBtn.style.backgroundColor = modalBg;
+        thumbBtn.innerHTML = `<img src="${imgUrl}" alt="Vignette ${idx + 1}">`;
+        thumbBtn.addEventListener("click", () => {
+          this.modalGalleryMain.src = imgUrl;
+          this.modalThumbnails.querySelectorAll(".modal-thumbnail-btn").forEach(b => b.classList.remove("active"));
+          thumbBtn.classList.add("active");
+        });
+        this.modalThumbnails.appendChild(thumbBtn);
       });
-      this.modalThumbnails.appendChild(thumbBtn);
-    });
+    } else {
+      this.modalThumbnails.style.display = "none";
+    }
 
-    // Rendu des Tailles avec Prix Dynamique
     this.renderModalSizeSelector(product);
-
-    // Mettre à jour l'URL WhatsApp du bouton modal
     this.updateModalWhatsAppHref();
 
-    // Afficher la modal
     this.productModalBackdrop.classList.add("active");
     document.body.style.overflow = "hidden";
   }
@@ -650,12 +816,12 @@ class ClientApp {
 
     if (hasSizes) {
       const isShoes = product.category === "chaussures";
-      const variantTitle = isShoes ? "Pointure disponible (37 à 45)" : "Taille de vêtement";
+      const variantTitle = isShoes ? "Choisissez votre pointure" : "Choisissez votre taille";
 
       let html = `
         <div class="variant-header">
           <span class="variant-title">${variantTitle} :</span>
-          <span class="size-stock-feedback" id="feedback-stock-text" style="color: var(--blue-700);">Sélectionnez une option</span>
+          <button type="button" class="size-guide-inline-btn" id="btn-modal-open-size-guide">📏 Guide des tailles</button>
         </div>
         <div class="size-options-container" id="modal-size-btn-group">
       `;
@@ -675,13 +841,19 @@ class ClientApp {
           <button type="button" class="size-choice-btn ${!inStock ? "out-of-stock" : ""}" data-size="${sizeKey}" data-stock="${stockCount}" data-price="${sizePrice}" ${!inStock ? "disabled" : ""}>
             <span class="size-name">${sizeKey}</span>
             <span class="size-price-tag">${store.formatPrice(sizePrice)}</span>
-            <span class="size-badge-sub">${inStock ? `${stockCount} disp.` : "Épuisé"}</span>
+            <span class="size-badge-sub">${inStock ? `${stockCount} en stock` : "Épuisé"}</span>
           </button>
         `;
       });
 
-      html += `</div>`;
+      html += `</div>
+        <div id="feedback-stock-text" style="margin-top: 0.5rem; font-size: 0.8125rem; font-weight: 700; color: var(--blue-700);"></div>
+      `;
       this.modalVariantContainer.innerHTML = html;
+
+      document.getElementById("btn-modal-open-size-guide")?.addEventListener("click", () => {
+        this.openInfoModal("sizes");
+      });
 
       const btnGroup = document.getElementById("modal-size-btn-group");
       const feedback = document.getElementById("feedback-stock-text");
@@ -698,8 +870,8 @@ class ClientApp {
           this.selectedModalPrice = price;
           this.modalCurrentPrice.textContent = store.formatPrice(price);
 
-          feedback.textContent = `Option ${this.selectedModalSize} : ${count} en stock • ${store.formatPrice(price)}`;
-          feedback.style.color = count <= 3 ? "var(--warning-amber)" : "var(--success-emerald)";
+          feedback.textContent = `✓ Taille ${this.selectedModalSize} sélectionnée (${count} disponible${count > 1 ? "s" : ""} • ${store.formatPrice(price)})`;
+          feedback.style.color = count <= 2 ? "var(--warning-amber)" : "var(--success-emerald)";
 
           this.modalQuantity = 1;
           this.modalQtyInput.value = 1;
@@ -719,7 +891,7 @@ class ClientApp {
         <div style="background: var(--slate-100); padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.845rem; display: flex; align-items: center; justify-content: space-between;">
           <span style="font-weight: 700; color: var(--slate-700);">Disponibilité :</span>
           <span style="font-weight: 800; color: ${stock > 0 ? 'var(--success-emerald)' : 'var(--danger-crimson)'};">
-            ${stock > 0 ? `${stock} unité(s) en stock` : 'Rupture temporaire'}
+            ${stock > 0 ? `✓ ${stock} unité(s) en stock` : 'Rupture temporaire'}
           </span>
         </div>
       `;
@@ -746,7 +918,7 @@ class ClientApp {
       this.modalQtyInput.value = nextVal;
       this.updateModalWhatsAppHref();
     } else if (nextVal > maxStock) {
-      window.showToast(`Stock maximal atteint (${maxStock} unités)`, "warning");
+      window.showToast(`Stock maximal disponible pour cette taille : ${maxStock}`, "warning");
     }
   }
 
@@ -760,8 +932,10 @@ class ClientApp {
     );
     const pref = store.getPreferredWhatsAppApp();
     this.modalDirectWaBtn.href = store.getWhatsAppUrl(message, pref);
+    const totalPriceStr = store.formatPrice((this.selectedModalPrice || this.activeProductModal.price) * this.modalQuantity);
     if (this.modalBtnWaLabel) {
-      this.modalBtnWaLabel.textContent = (pref === "business") ? "Commander sur WhatsApp Business" : "Commander sur WhatsApp";
+      const appName = (pref === "business") ? "WhatsApp Business" : "WhatsApp";
+      this.modalBtnWaLabel.textContent = `Commander sur ${appName} (${totalPriceStr})`;
     }
   }
 
@@ -770,7 +944,6 @@ class ClientApp {
 
     const hasSizes = this.activeProductModal.sizes && Object.keys(this.activeProductModal.sizes).length > 0;
     if (hasSizes && !this.selectedModalSize) {
-      // Sélectionne automatiquement la première taille disponible au lieu de bloquer l'achat
       const firstAvailable = Object.keys(this.activeProductModal.sizes).find(k => {
         const v = this.activeProductModal.sizes[k];
         const stock = typeof v === "object" ? v.stock : v;
@@ -824,6 +997,73 @@ class ClientApp {
     }
     document.body.style.overflow = "";
     this.activeProductModal = null;
+  }
+
+  // --- MODAL INFO (GUIDE DES TAILLES, LIVRAISON, SUIVI) ---
+  openInfoModal(type) {
+    if (!this.infoModalBackdrop || !this.infoModalBody) return;
+
+    if (type === "sizes") {
+      this.infoModalBody.innerHTML = `
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.5rem;">📏 Guide des Tailles & Pointures DjibSHOP</h3>
+        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1.25rem;">Nos maillots et vêtements taillent normalement (coupe européenne standard). Si vous préférez une coupe ample, prenez une taille au-dessus.</p>
+        <div style="overflow-x: auto; margin-bottom: 1.25rem;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.825rem; text-align: left;">
+            <thead>
+              <tr style="background: var(--blue-50); color: var(--blue-900);">
+                <th style="padding: 8px 10px; border: 1px solid var(--slate-200);">Taille</th>
+                <th style="padding: 8px 10px; border: 1px solid var(--slate-200);">Tour de poitrine</th>
+                <th style="padding: 8px 10px; border: 1px solid var(--slate-200);">Stature recommandée</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding: 7px 10px; border: 1px solid var(--slate-200); font-weight:700;">S</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">88 - 94 cm</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">160 - 170 cm</td></tr>
+              <tr><td style="padding: 7px 10px; border: 1px solid var(--slate-200); font-weight:700;">M</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">95 - 101 cm</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">168 - 176 cm</td></tr>
+              <tr><td style="padding: 7px 10px; border: 1px solid var(--slate-200); font-weight:700;">L</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">102 - 108 cm</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">175 - 182 cm</td></tr>
+              <tr><td style="padding: 7px 10px; border: 1px solid var(--slate-200); font-weight:700;">XL</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">109 - 115 cm</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">180 - 188 cm</td></tr>
+              <tr><td style="padding: 7px 10px; border: 1px solid var(--slate-200); font-weight:700;">XXL</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">116 - 123 cm</td><td style="padding: 7px 10px; border: 1px solid var(--slate-200);">184 - 195 cm</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP ! J\\'ai besoin d\\'aide pour choisir ma taille.');">
+          Demander conseil sur WhatsApp
+        </button>
+      `;
+    } else if (type === "delivery") {
+      this.infoModalBody.innerHTML = `
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.5rem;">🚚 Zones de Livraison à Djibouti</h3>
+        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1rem;">Nous assurons la livraison rapide dans tous les quartiers de Djibouti-Ville et Balbala :</p>
+        <ul style="font-size: 0.85rem; color: var(--slate-700); line-height: 1.8; margin-bottom: 1.25rem; padding-left: 1.2rem;">
+          <li><strong>Centre-Ville, Plateau, Héron, Haramous, Gabode</strong> : Livraison express le jour même.</li>
+          <li><strong>Quartiers 1 à 7, Ambouli, Stade, Einguela</strong> : Livraison rapide dans la journée.</li>
+          <li><strong>Balbala, PK12, Hayabley, Hodan, Cheik Moussa</strong> : Livraison organisée quotidiennement.</li>
+          <li><strong>Paiement 100% à la livraison</strong> : Vous vérifiez votre article à la réception avant de régler en FDJ (espèces, Waafi, D-Money ou CacPay).</li>
+        </ul>
+        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP ! Je souhaite connaître les modalités de livraison pour mon quartier.');">
+          Contacter le livreur sur WhatsApp
+        </button>
+      `;
+    } else {
+      this.infoModalBody.innerHTML = `
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.5rem;">📦 Suivi de Commande Direct</h3>
+        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1.25rem;">Toutes les commandes DjibSHOP sont traitées en direct par notre équipe sur WhatsApp au <strong>+253 77 07 87 93</strong>. Cliquez ci-dessous pour vérifier le statut de votre livraison :</p>
+        <button type="button" class="whatsapp-direct-btn" onclick="store.openWhatsApp('Bonjour DjibSHOP ! Je souhaite suivre ma commande en cours.');">
+          Suivre ma commande sur WhatsApp
+        </button>
+      `;
+    }
+
+    this.infoModalBackdrop.classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
+
+  closeInfoModal() {
+    if (this.infoModalBackdrop) {
+      this.infoModalBackdrop.classList.remove("active");
+    }
+    if (!this.productModalBackdrop?.classList.contains("active")) {
+      document.body.style.overflow = "";
+    }
   }
 
   // --- PANIER CLIENT (CART DRAWER) ---

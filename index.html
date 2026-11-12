@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>DjibSHOP | Mode, Vêtements, Chaussures & Accessoires à Djibouti</title>
-  <meta name="description" content="DjibSHOP, votre boutique en ligne de référence à Djibouti. Vêtements homme et femme, chaussures et accessoires tendance. Commande rapide via WhatsApp au +253 77078793, prix en FDJ.">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>DjibSHOP | Mode, Maillots, Vêtements, Chaussures & Accessoires à Djibouti</title>
+  <meta name="description" content="DjibSHOP, votre boutique en ligne de référence à Djibouti. Maillots, vêtements, chaussures et accessoires tendance. Commande rapide via WhatsApp au +253 77078793, prix en FDJ.">
   <meta name="theme-color" content="#0B4FBA">
 
   <!-- Feuilles de Styles -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=3.0">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230B4FBA'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -19,10 +22,14 @@
   <div class="top-announcement-bar">
     <div class="container announcement-inner">
       <div class="announcement-item">
+        <span class="announcement-badge-live">
+          <span class="live-pulse-dot"></span>
+          DJIBOUTI
+        </span>
         <span>Livraison express à Djibouti-Ville, Balbala, Héron & Haramous</span>
       </div>
       <div class="announcement-item">
-        <span>Assistance & Commande WhatsApp :</span>
+        <span>Commande & Assistance WhatsApp :</span>
         <a href="whatsapp://send?phone=25377078793" class="announcement-link">
           +253 77 07 87 93
         </a>
@@ -31,7 +38,7 @@
   </div>
 
   <!-- =======================================================================
-       2. EN-TÊTE PRINCIPAL (STOREFRONT CLIENT SANS BOUTON ADMIN)
+       2. EN-TÊTE PRINCIPAL (AVEC RECHERCHE MOBILE & FAVORIS)
        ======================================================================= -->
   <header class="main-header">
     <div class="container header-inner">
@@ -46,24 +53,32 @@
         </div>
         <div class="brand-text-block">
           <div class="brand-title">Djib<span>SHOP</span></div>
-          <div class="brand-tagline">Boutique Officielle Djibouti</div>
+          <div class="brand-tagline">Boutique Officielle • FDJ</div>
         </div>
       </a>
 
-      <!-- Champ de recherche intelligent -->
+      <!-- Champ de recherche intelligent (Visible sur PC et Mobile) -->
       <div class="header-search">
         <div class="search-input-wrapper">
-          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <circle cx="11" cy="11" r="8"/>
             <path d="m21 21-4.3-4.3"/>
           </svg>
-          <input type="text" id="site-search-input" placeholder="Rechercher des articles, pointures (ex: 41), tailles (ex: XL)..." autocomplete="off">
+          <input type="text" id="site-search-input" placeholder="Rechercher un article, club (ex: Real, Barça), taille (XL)..." autocomplete="off">
           <button type="button" id="site-search-clear" class="search-clear-btn" aria-label="Effacer la recherche">&times;</button>
         </div>
       </div>
 
-      <!-- Actions de l'en-tête (Panier Client) -->
+      <!-- Actions de l'en-tête (Favoris & Panier Client) -->
       <div class="header-actions">
+        <button type="button" class="action-btn action-btn-secondary" id="header-wishlist-toggle-btn" aria-label="Voir mes favoris" title="Mes Favoris">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          </svg>
+          <span class="desktop-only" style="font-weight: 700;">Favoris</span>
+          <span class="counter-badge wishlist-count-display" style="display: none; background: var(--danger-crimson);">0</span>
+        </button>
+
         <button type="button" class="action-btn action-btn-cart" id="header-cart-toggle-btn" aria-label="Voir le panier">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="8" cy="21" r="1"/>
@@ -78,29 +93,39 @@
   </header>
 
   <!-- =======================================================================
-       3. BARRE DE SÉLECTION DES CATÉGORIES (ÉPURÉES SANS PARENTHÈSES)
+       3. BARRE DE SÉLECTION DES CATÉGORIES
        ======================================================================= -->
   <nav class="category-nav-bar" aria-label="Catégories de produits">
     <div class="container category-nav-inner" id="category-nav-list">
       <button type="button" class="category-nav-item active" data-category="all">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-        Tout le catalogue
+        <span>Tout le catalogue</span>
+        <span class="cat-pill-count" data-cat-count="all"></span>
       </button>
       <button type="button" class="category-nav-item" data-category="vetements">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
-        Vêtements
+        <span>Vêtements</span>
+        <span class="cat-pill-count" data-cat-count="vetements"></span>
       </button>
       <button type="button" class="category-nav-item" data-category="chaussures">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v-2.38C4 11.5 5.5 10 7.5 10H11v6H4Z"/><path d="M11 16v-6h4.5c2 0 3.5 1.5 3.5 3.62V16H11Z"/><path d="M2 19h20"/></svg>
-        Chaussures
+        <span>Chaussures</span>
+        <span class="cat-pill-count" data-cat-count="chaussures"></span>
       </button>
       <button type="button" class="category-nav-item" data-category="accessoires">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        Accessoires
+        <span>Accessoires</span>
+        <span class="cat-pill-count" data-cat-count="accessoires"></span>
       </button>
       <button type="button" class="category-nav-item" data-category="autres">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
-        Autres
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>Autres</span>
+        <span class="cat-pill-count" data-cat-count="autres"></span>
+      </button>
+      <button type="button" class="category-nav-item category-nav-wishlist" data-category="wishlist">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        <span>Mes Favoris</span>
+        <span class="cat-pill-count" data-cat-count="wishlist"></span>
       </button>
     </div>
   </nav>
@@ -109,52 +134,103 @@
        4. SECTION CLIENT STOREFRONT
        ======================================================================= -->
   <main class="client-section" id="client-store-section">
-    <!-- Hero Banner E-Commerce -->
+    <!-- Hero Banner E-Commerce Moderne -->
     <section class="hero-banner">
+      <div class="hero-bg-glow hero-glow-1"></div>
+      <div class="hero-bg-glow hero-glow-2"></div>
       <div class="container hero-grid">
-        <div>
+        <div class="hero-content-col">
           <div class="hero-tag">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            Nouvelle Collection 2026 à Djibouti
+            <span class="hero-tag-dot"></span>
+            Boutique N°1 à Djibouti • Arrivages en Direct
           </div>
-          <h1 class="hero-title">Le Style & La Tendance, Commandés en 1 Clic sur WhatsApp</h1>
+          <h1 class="hero-title">Votre Style & Vos Maillots Préférés, Livrés chez Vous</h1>
           <p class="hero-subtitle">
-            Découvrez une sélection exclusive de vêtements, chaussures et accessoires. Aucun compte requis : choisissez vos tailles, vérifiez les stocks et commandez directement par WhatsApp avec des prix clairs en <strong>FDJ</strong>.
+            Sélectionnez votre taille, vérifiez la disponibilité en temps réel et commandez en <strong>1 clic sur WhatsApp</strong>. Prix affichés en <strong>FDJ</strong>, paiement simple à la réception.
           </p>
-          <div class="hero-features">
-            <div class="hero-feature-item">
-              <div class="hero-feature-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <span>Stocks en temps réel</span>
-            </div>
-            <div class="hero-feature-item">
-              <div class="hero-feature-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
-              </div>
-              <span>Paiement à la livraison</span>
-            </div>
+          <div class="hero-cta-row">
+            <a href="#catalog-anchor" class="hero-explore-btn">
+              <span>Explorer les Articles</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+            </a>
+            <a href="whatsapp://send?phone=25377078793&text=Bonjour%20DjibSHOP%20!%20Je%20souhaite%20me%20renseigner%20sur%20vos%20articles%20disponibles." class="hero-wa-inline-btn" id="hero-wa-btn">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/>
+              </svg>
+              <span>WhatsApp Direct</span>
+            </a>
           </div>
         </div>
 
         <div class="hero-action-box">
-          <div class="hero-action-header">Commande WhatsApp Directe</div>
-          <p class="hero-action-desc">Discutez directement avec un conseiller DjibSHOP pour vos commandes, questions sur les pointures ou livraisons express.</p>
-          <a href="whatsapp://send?phone=25377078793&text=Bonjour%20DjibSHOP%20!%20Je%20souhaite%20me%20renseigner%20sur%20vos%20articles%20disponibles." class="whatsapp-direct-btn">
+          <div class="hero-action-badge">Service Client Rapide</div>
+          <div class="hero-action-header">Commande Directe sur WhatsApp</div>
+          <p class="hero-action-desc">Besoin d'un conseil sur une taille ou d'une livraison rapide à Djibouti ? Notre équipe vous répond immédiatement.</p>
+          <a href="whatsapp://send?phone=25377078793&text=Bonjour%20DjibSHOP%20!%20Je%20souhaite%20me%20renseigner%20sur%20vos%20articles%20disponibles." class="whatsapp-direct-btn" data-wa-direct="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.42 0-2.82-.37-4.06-1.08l-.29-.17-3.12.82.83-3.04-.19-.3a8.163 8.163 0 0 1-1.25-4.46c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.19.53-1.08 1.02-1.5 1.07-.39.05-.9.08-2.66-.65-2.25-.93-3.7-3.23-3.81-3.38-.11-.15-.92-1.22-.92-2.33 0-1.11.58-1.65.79-1.88.21-.23.46-.28.61-.28.15 0 .31 0 .44.01.14.01.33-.05.51.39.19.46.65 1.58.71 1.7.06.11.1.25.02.4-.08.15-.12.25-.24.39-.12.14-.25.31-.36.42-.12.12-.25.25-.11.49.14.24.62 1.02 1.33 1.65.91.81 1.68 1.06 1.92 1.18.24.12.38.1.52-.06.14-.17.6-.7.76-.94.16-.24.32-.2.53-.12.21.08 1.34.63 1.57.75.23.12.38.17.44.27.06.09.06.55-.13 1.08z"/>
             </svg>
-            Contacter le +253 77 07 87 93
+            +253 77 07 87 93
           </a>
         </div>
       </div>
     </section>
 
-    <!-- Barre d'outils et de filtres du catalogue -->
+    <!-- Bandeau d'Avantages Client (Trust Bar) -->
     <div class="container">
+      <div class="trust-perks-strip">
+        <div class="trust-perk-card">
+          <div class="trust-perk-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="16" height="13" x="1" y="6" rx="2"/><polygon points="17 8 20 8 23 11 23 16 17 16 17 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div>
+            <div class="trust-perk-title">Livraison Rapide</div>
+            <div class="trust-perk-sub">Djibouti-Ville & Balbala</div>
+          </div>
+        </div>
+        <div class="trust-perk-card">
+          <div class="trust-perk-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+          </div>
+          <div>
+            <div class="trust-perk-title">Paiement à la Livraison</div>
+            <div class="trust-perk-sub">Vérifiez avant de payer</div>
+          </div>
+        </div>
+        <div class="trust-perk-card">
+          <div class="trust-perk-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
+          <div>
+            <div class="trust-perk-title">Stocks en Direct</div>
+            <div class="trust-perk-sub">Catalogue mis à jour en temps réel</div>
+          </div>
+        </div>
+        <div class="trust-perk-card">
+          <div class="trust-perk-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <div class="trust-perk-title">Commande 1-Clic</div>
+            <div class="trust-perk-sub">Directement sur WhatsApp</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre d'outils et de filtres du catalogue -->
+    <div class="container" id="catalog-anchor">
       <div class="catalog-controls-bar">
         <div class="catalog-meta">
-          <span class="catalog-count" id="catalog-item-count">Chargement...</span>
+          <span class="catalog-count" id="catalog-item-count">Chargement du catalogue...</span>
+          <span class="live-sync-pill" id="live-sync-indicator" title="Catalogue synchronisé en direct">
+            <span class="sync-dot"></span>
+            En direct
+          </span>
+          <button type="button" class="btn-refresh-catalog" id="btn-manual-refresh" title="Actualiser les articles">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Actualiser</span>
+          </button>
         </div>
 
         <div class="catalog-tools">
@@ -175,7 +251,7 @@
         </div>
       </div>
 
-      <!-- SECTION VENTES FLASH DU JOUR (Style Shein & Alibaba en haut) -->
+      <!-- SECTION VENTES FLASH DU JOUR -->
       <section id="flash-sale-showcase-section" class="flash-sale-showcase-container" style="display: none;">
         <div class="flash-showcase-header">
           <div class="flash-header-title-wrap">
@@ -196,19 +272,18 @@
           </div>
         </div>
 
-        <!-- Grille des produits Flash séparés -->
         <div class="products-grid flash-products-grid" id="flash-products-container">
           <!-- Rempli dynamiquement par js/app.js -->
         </div>
       </section>
 
       <!-- En-tête du catalogue standard -->
-      <div id="regular-catalog-title-bar" class="catalog-section-title-bar" style="margin-top: 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-        <div style="font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; color: var(--slate-900);">
-          Tous nos Articles
+      <div id="regular-catalog-title-bar" class="catalog-section-title-bar" style="margin-top: 1rem; margin-bottom: 1rem; display: none; align-items: center; justify-content: space-between;">
+        <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: var(--slate-900);">
+          Tous nos Articles Disponibles
         </div>
         <div style="font-size: 0.8rem; font-weight: 600; color: var(--slate-500);">
-          Collection Prêt-à-porter
+          Sélection Officielle DjibSHOP
         </div>
       </div>
 
@@ -220,7 +295,7 @@
   </main>
 
   <!-- =======================================================================
-       5. MODAL DÉTAIL PRODUIT (SHEIN / ALIBABA FORMAT)
+       5. MODAL DÉTAIL PRODUIT (AVEC PRIX PAR TAILLE & GUIDE DES TAILLES)
        ======================================================================= -->
   <div class="modal-backdrop" id="product-detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-product-title">
     <div class="product-modal-container">
@@ -229,7 +304,7 @@
       </button>
 
       <div class="modal-content-grid">
-        <!-- Galerie Photos Studio Shein Fond Blanc -->
+        <!-- Galerie Photos Studio -->
         <div class="modal-gallery">
           <div class="modal-main-image-wrap" id="modal-gallery-main-wrap">
             <img src="" id="modal-gallery-main-img" class="modal-main-image" alt="Article DjibSHOP">
@@ -241,7 +316,6 @@
 
         <!-- Détails, Tailles et Achat WhatsApp -->
         <div class="modal-info">
-          <!-- Vente flash banner dans modal -->
           <div id="modal-flash-sale-banner" class="modal-flash-sale-badge" style="display: none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             <span>VENTE FLASH SE TERMINE DANS :</span>
@@ -265,7 +339,7 @@
             Description détaillée du produit sélectionné.
           </p>
 
-          <!-- Zone Dynamique des Variantes (XL, XXL, XXXL, XXXXL / Pointures 40, 41...) -->
+          <!-- Zone Dynamique des Variantes -->
           <div class="modal-variant-section" id="modal-variant-container">
             <!-- Rendu dynamique par app.js -->
           </div>
@@ -352,7 +426,7 @@
         </div>
 
         <div class="cart-summary-line">
-          <span class="cart-summary-label">Sous-total :</span>
+          <span class="cart-summary-label">Total à payer à la livraison :</span>
           <span class="cart-summary-val" id="cart-drawer-subtotal">0 FDJ</span>
         </div>
 
@@ -375,17 +449,32 @@
   </div>
 
   <!-- =======================================================================
-       7. BARRE DE NAVIGATION FLOTTANTE SUR MOBILE (SHEIN APP STYLE)
+       7. MODAL D'INFORMATION (GUIDE DES TAILLES & LIVRAISON À DJIBOUTI)
+       ======================================================================= -->
+  <div class="modal-backdrop" id="info-helper-modal" role="dialog" aria-modal="true">
+    <div class="product-modal-container" style="max-width: 600px; padding: 2rem;">
+      <button type="button" class="modal-close-btn" id="btn-close-info-modal" aria-label="Fermer">&times;</button>
+      <div id="info-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       8. BARRE DE NAVIGATION FLOTTANTE SUR MOBILE
        ======================================================================= -->
   <nav class="mobile-bottom-nav" aria-label="Navigation mobile rapide">
     <div class="mobile-bottom-nav-inner">
-      <a href="index.html" class="mobile-nav-btn active">
+      <button type="button" class="mobile-nav-btn active" id="mobile-nav-home">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <span>Accueil</span>
-      </a>
-      <button type="button" class="mobile-nav-btn" onclick="document.getElementById('site-search-input').focus(); window.scrollTo({top: 0, behavior: 'smooth'});">
+        <span>Boutique</span>
+      </button>
+      <button type="button" class="mobile-nav-btn" id="mobile-nav-search">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <span>Rechercher</span>
+      </button>
+      <button type="button" class="mobile-nav-btn" id="mobile-nav-wishlist">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        <span>Favoris</span>
+        <span class="counter-badge wishlist-count-display" style="display: none; background: var(--danger-crimson);">0</span>
       </button>
       <button type="button" class="mobile-nav-btn" id="floating-mobile-cart-btn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
@@ -396,7 +485,7 @@
   </nav>
 
   <!-- =======================================================================
-       8. PIED DE PAGE PROFESSIONNEL
+       9. PIED DE PAGE PROFESSIONNEL
        ======================================================================= -->
   <footer class="main-footer">
     <div class="container">
@@ -404,7 +493,7 @@
         <div>
           <div class="footer-brand-title">Djib<span>SHOP</span></div>
           <p class="footer-desc">
-            La première plateforme e-commerce moderne de prêt-à-porter et d'accessoires à Djibouti. Commande simple par messagerie WhatsApp et paiement à la réception.
+            Votre boutique e-commerce moderne de vêtements, maillots, chaussures et accessoires à Djibouti. Commande directe par WhatsApp et paiement à la réception.
           </p>
           <div style="font-size: 0.8125rem; color: #93C5FD; font-weight: 600;">
             WhatsApp : +253 77 07 87 93 • République de Djibouti
@@ -414,32 +503,31 @@
         <div>
           <div class="footer-heading">Rayons</div>
           <ul class="footer-links">
-            <li><a href="#" onclick="window.clientApp.selectedCategory='vetements'; window.clientApp.renderProducts(); return false;">Vêtements</a></li>
-            <li><a href="#" onclick="window.clientApp.selectedCategory='chaussures'; window.clientApp.renderProducts(); return false;">Chaussures</a></li>
-            <li><a href="#" onclick="window.clientApp.selectedCategory='accessoires'; window.clientApp.renderProducts(); return false;">Accessoires</a></li>
-            <li><a href="#" onclick="window.clientApp.selectedCategory='autres'; window.clientApp.renderProducts(); return false;">Autres</a></li>
+            <li><a href="#catalog-anchor" data-footer-cat="all">Tout le catalogue</a></li>
+            <li><a href="#catalog-anchor" data-footer-cat="vetements">Vêtements & Maillots</a></li>
+            <li><a href="#catalog-anchor" data-footer-cat="chaussures">Chaussures</a></li>
+            <li><a href="#catalog-anchor" data-footer-cat="accessoires">Accessoires</a></li>
           </ul>
         </div>
 
         <div>
           <div class="footer-heading">Service Client</div>
           <ul class="footer-links">
-            <li><a href="whatsapp://send?phone=25377078793">Commander via WhatsApp</a></li>
-            <li><a href="#">Zones de livraison à Djibouti</a></li>
-            <li><a href="#">Guide des tailles & pointures</a></li>
-            <li><a href="#">Suivi de commande direct</a></li>
+            <li><a href="whatsapp://send?phone=25377078793" data-wa-direct="true">Commander via WhatsApp</a></li>
+            <li><a href="#" data-info-modal="delivery">Zones de livraison à Djibouti</a></li>
+            <li><a href="#" data-info-modal="sizes">Guide des tailles & pointures</a></li>
+            <li><a href="#" data-info-modal="tracking">Suivi de commande direct</a></li>
           </ul>
         </div>
 
         <div>
           <div class="footer-heading">Engagement Qualité</div>
           <p style="font-size: 0.8125rem; color: var(--slate-400); line-height: 1.5; margin-bottom: 0.85rem;">
-            Tous nos produits sont vérifiés avant envoi et photographiés sous éclairage studio sur fond blanc pur pour une transparence totale.
+            Chaque article est soigneusement vérifié avant livraison. Vous ne payez qu'à la réception de votre commande à Djibouti.
           </p>
         </div>
       </div>
 
-      <!-- LIGNE BAS DE PAGE CENTRALISÉE -->
       <div class="footer-bottom-bar" style="justify-content: center; text-align: center;">
         <div>© 2026 DjibSHOP. Tous droits réservés. République de Djibouti.</div>
       </div>
@@ -448,10 +536,10 @@
 
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Scripts JavaScript Modulaires -->
-  <script src="js/data.js"></script>
-  <script src="js/supabase.js"></script>
-  <script src="js/store.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Scripts JavaScript Modulaires (avec version anti-cache) -->
+  <script src="js/data.js?v=3.0"></script>
+  <script src="js/supabase.js?v=3.0"></script>
+  <script src="js/store.js?v=3.0"></script>
+  <script src="js/app.js?v=3.0"></script>
 </body>
 </html>

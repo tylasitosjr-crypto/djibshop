@@ -1,6 +1,6 @@
 /**
  * DjibSHOP - Supabase Cloud Database Client & Persistence
- * Synchronisation temps réel sur tous les appareils (PC, Mobile, Tablettes)
+ * Synchronisation temps réel sans cache obsolète (Client SDK + Fallback REST Direct anti-blocage CDN)
  */
 
 const DEFAULT_SUPABASE_CONFIG = {
@@ -13,6 +13,8 @@ const SUPABASE_CONFIG_KEY = "djibshop_supabase_config_v2";
 class SupabaseService {
   constructor() {
     this.client = null;
+    this.url = "";
+    this.anonKey = "";
     this.isConfigured = false;
     this.init();
   }
@@ -28,7 +30,6 @@ class SupabaseService {
       }
     }
 
-    // Utiliser la configuration par défaut officielle
     if (!config || !config.url || !config.anonKey) {
       config = DEFAULT_SUPABASE_CONFIG;
     }
@@ -40,17 +41,31 @@ class SupabaseService {
 
   configure(url, anonKey) {
     if (!url || !anonKey) return false;
+    this.url = url.trim().replace(/\/+$/, "");
+    this.anonKey = anonKey.trim();
+    this.isConfigured = true;
+
     try {
-      if (window.supabase) {
-        this.client = window.supabase.createClient(url.trim(), anonKey.trim());
-        this.isConfigured = true;
-        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ url: url.trim(), anonKey: anonKey.trim() }));
-        return true;
+      localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ url: this.url, anonKey: this.anonKey }));
+    } catch (e) {
+      console.warn("Impossible de sauvegarder la config Supabase dans localStorage", e);
+    }
+
+    try {
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        // Désactiver le cache navigateur sur toutes les requêtes Supabase
+        this.client = window.supabase.createClient(this.url, this.anonKey, {
+          auth: { persistSession: false },
+          global: {
+            fetch: (input, init = {}) => fetch(input, { ...init, cache: "no-store" })
+          }
+        });
       }
     } catch (e) {
-      console.error("Impossible d'initialiser Supabase client", e);
+      console.warn("Initialisation SDK Supabase ignorée, utilisation du mode REST direct :", e);
     }
-    return false;
+
+    return true;
   }
 
   getConfig() {
@@ -67,43 +82,83 @@ class SupabaseService {
     this.isConfigured = false;
   }
 
+  getRestHeaders(extra = {}) {
+    return {
+      "apikey": this.anonKey,
+      "Authorization": `Bearer ${this.anonKey}`,
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      ...extra
+    };
+  }
+
   async testConnection() {
-    if (!this.client) return { success: false, message: "Client non initialisé" };
+    if (!this.isConfigured) return { success: false, message: "Client non configuré" };
     try {
-      const { data, error } = await this.client.from("products").select("id").limit(1);
-      if (error) throw error;
+      const response = await fetch(`${this.url}/rest/v1/products?select=id&limit=1`, {
+        method: "GET",
+        headers: this.getRestHeaders(),
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText}`);
+      }
       return { success: true, message: "Connexion réussie à Supabase !" };
     } catch (e) {
       return { success: false, message: e.message || "Erreur de connexion" };
     }
   }
 
-  async fetchProducts() {
-    if (!this.isConfigured || !this.client) return null;
-    try {
-      const { data, error } = await this.client
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      if (data && data.length > 0) {
-        return data.map(item => this.mapFromSupabase(item));
+  async fetchProducts(retries = 2) {
+    if (!this.isConfigured) return null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // Appel REST direct avec cache-busting pour garantir que les nouveaux produits s'affichent toujours
+        const timestamp = Date.now();
+        const endpoint = `${this.url}/rest/v1/products?select=*&order=created_at.desc&_t=${timestamp}`;
+        const response = await fetch(endpoint, {
+          method: "GET",
+          headers: this.getRestHeaders(),
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error(`Supabase HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          return data.map(item => this.mapFromSupabase(item));
+        }
+      } catch (e) {
+        console.warn(`Tentative ${attempt + 1}/${retries + 1} fetchProducts échouée:`, e.message);
+        if (attempt < retries) {
+          await new Promise(res => setTimeout(res, 600 * (attempt + 1)));
+        }
       }
-    } catch (e) {
-      console.warn("Supabase fetchProducts warning (fallback sur local):", e.message);
     }
     return null;
   }
 
   async saveProduct(product) {
-    if (!this.isConfigured || !this.client) return false;
+    if (!this.isConfigured) return false;
     try {
       const payload = this.mapToSupabase(product);
-      const { data, error } = await this.client
-        .from("products")
-        .upsert(payload, { onConflict: "id" })
-        .select();
-      if (error) throw error;
+      const response = await fetch(`${this.url}/rest/v1/products?on_conflict=id`, {
+        method: "POST",
+        headers: this.getRestHeaders({
+          "Prefer": "resolution=merge-duplicates,return=representation"
+        }),
+        body: JSON.stringify(payload),
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || `HTTP ${response.status}`);
+      }
       return true;
     } catch (e) {
       console.error("Supabase saveProduct error:", e);
@@ -112,10 +167,16 @@ class SupabaseService {
   }
 
   async deleteProduct(id) {
-    if (!this.isConfigured || !this.client) return false;
+    if (!this.isConfigured) return false;
     try {
-      const { error } = await this.client.from("products").delete().eq("id", id);
-      if (error) throw error;
+      const response = await fetch(`${this.url}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: this.getRestHeaders(),
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       return true;
     } catch (e) {
       console.error("Supabase deleteProduct error:", e);
@@ -124,11 +185,20 @@ class SupabaseService {
   }
 
   async syncAllToSupabase(products) {
-    if (!this.isConfigured || !this.client) return false;
+    if (!this.isConfigured) return false;
     try {
       const payloads = products.map(p => this.mapToSupabase(p));
-      const { error } = await this.client.from("products").upsert(payloads, { onConflict: "id" });
-      if (error) throw error;
+      const response = await fetch(`${this.url}/rest/v1/products?on_conflict=id`, {
+        method: "POST",
+        headers: this.getRestHeaders({
+          "Prefer": "resolution=merge-duplicates"
+        }),
+        body: JSON.stringify(payloads),
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       return true;
     } catch (e) {
       console.error("Supabase syncAll error:", e);
@@ -162,16 +232,16 @@ class SupabaseService {
       ref: row.ref,
       title: row.title,
       category: row.category,
-      price: row.price,
-      originalPrice: row.original_price,
+      price: Number(row.price) || 0,
+      originalPrice: row.original_price ? Number(row.original_price) : null,
       badge: row.badge,
       flashSale: !!row.flash_sale,
       flashSaleEnds: row.flash_sale_ends,
       bgStyle: row.bg_style || "studio-white",
-      description: row.description,
-      images: row.images || [],
+      description: row.description || "",
+      images: Array.isArray(row.images) ? row.images : [],
       sizes: row.sizes,
-      totalStock: row.total_stock,
+      totalStock: Number(row.total_stock) || 0,
       createdAt: row.created_at
     };
   }
