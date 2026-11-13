@@ -735,43 +735,39 @@ class Store {
     window.dispatchEvent(new CustomEvent("wa-pref-changed", { detail: cleanType }));
   }
 
+  isMobileDevice() {
+    const ua = navigator.userAgent || "";
+    return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+      || (/Macintosh/i.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+  }
+
   getWhatsAppUrl(message, appType = null) {
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
-    const ua = navigator.userAgent || "";
-    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
-      || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-      || window.innerWidth <= 800;
 
-    if (!isMobile) {
+    if (!this.isMobileDevice()) {
       return `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
     }
 
-    return `https://wa.me/${phone}?text=${encoded}`;
+    return `whatsapp://send?phone=${phone}&text=${encoded}`;
   }
 
   openWhatsApp(message, appType = null) {
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
-    const targetUrl = `https://wa.me/${phone}?text=${encoded}`;
-
-    const ua = navigator.userAgent || "";
-    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
-      || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-      || window.innerWidth <= 800;
 
     // 1. Ordinateur (PC / Mac) : ouvrir WhatsApp Web
-    if (!isMobile) {
+    if (!this.isMobileDevice()) {
       window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`, "_blank");
       return;
     }
 
-    // 2. Mobile (Redmi, Samsung, iPhone, etc.) :
-    // Redirection automatique directe vers la discussion WhatsApp du vendeur via wa.me
-    // Sans popup de blocage "Accéder à l'application... Continuer", exactement comme sur les autres appareils
-    window.location.href = targetUrl;
+    // 2. Mobile (Redmi, Samsung, Xiaomi, iPhone, etc.) :
+    // Lancement instantané de l'application WhatsApp directement dans le chat avec le vendeur (+253 77 07 87 93).
+    // Bypasse totalement la page intermédiaire api.whatsapp.com et évite toute pop-up bloquante.
+    window.location.href = `whatsapp://send?phone=${phone}&text=${encoded}`;
   }
 
   generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null, appType = null) {
