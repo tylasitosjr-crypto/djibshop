@@ -740,23 +740,17 @@ class Store {
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
     const ua = navigator.userAgent || "";
-    const isAndroid = /Android/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1) || window.innerWidth <= 800;
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+      || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+      || window.innerWidth <= 800;
 
     const chosenApp = appType || this.getPreferredWhatsAppApp();
-    const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
-    const universalUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
 
-    if (isAndroid) {
-      if (/MiuiBrowser/i.test(ua)) {
-        return `whatsapp://send?phone=${phone}&text=${encoded}`;
+    if (isMobile) {
+      if (chosenApp === "business" && /Android/i.test(ua)) {
+        return `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=com.whatsapp.w4b;end;`;
       }
-      return `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=${pkg};S.browser_fallback_url=${encodeURIComponent(universalUrl)};end;`;
-    } else if (isIOS) {
       return `whatsapp://send?phone=${phone}&text=${encoded}`;
-    } else if (isMobile) {
-      return universalUrl;
     } else {
       return `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
     }
@@ -767,75 +761,50 @@ class Store {
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
     const chosenApp = appType || this.getPreferredWhatsAppApp();
-    const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
 
     const ua = navigator.userAgent || "";
     const isAndroid = /Android/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
       || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
       || window.innerWidth <= 800;
 
-    const universalUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
-    const directScheme = `whatsapp://send?phone=${phone}&text=${encoded}`;
-    const intentUrl = `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=${pkg};S.browser_fallback_url=${encodeURIComponent(universalUrl)};end;`;
-
-    // 1. Ordinateur (PC / Mac)
+    // 1. Ordinateur (PC / Mac) : ouvrir WhatsApp Web
     if (!isMobile) {
       window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`, "_blank");
       return;
     }
 
-    // 2. iOS (iPhone / iPad)
-    if (isIOS) {
-      window.location.href = directScheme;
-      setTimeout(() => {
-        if (document.visibilityState === "visible") {
-          window.location.href = universalUrl;
-        }
-      }, 500);
-      return;
-    }
+    // 2. Mobile (Android dont Redmi/Samsung, et iPhone) : lancer DIRECTEMENT l'application WhatsApp
+    const directScheme = `whatsapp://send?phone=${phone}&text=${encoded}`;
 
-    // 3. Android (Redmi / Xiaomi, Samsung, Pixel, etc.)
-    if (isAndroid) {
-      // Détecter Mi Browser natif sur Xiaomi/Redmi
-      if (/MiuiBrowser/i.test(ua)) {
-        window.location.href = directScheme;
-        setTimeout(() => {
-          if (document.visibilityState === "visible") {
-            window.location.href = universalUrl;
-          }
-        }, 500);
-        return;
-      }
-
-      // Chrome / Opera / Brave / etc. sur Android
+    if (isAndroid && chosenApp === "business") {
+      const businessIntent = `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=com.whatsapp.w4b;end;`;
       try {
-        window.location.href = intentUrl;
+        window.location.href = businessIntent;
       } catch (e) {
-        window.location.href = universalUrl;
+        window.location.href = directScheme;
       }
 
-      // Filet de sécurité anti-blocage spécifique MIUI / HyperOS (Redmi) :
-      // Si MIUI bloque silencieusement le package en tâche de fond, basculer instantanément sur l'URL universelle
-      const safetyTimer = setTimeout(() => {
+      // Si l'intent package est bloqué par Redmi/MIUI ou si WhatsApp Business n'est pas installé,
+      // basculer directement sur l'application WhatsApp via whatsapp:// sans AUCUNE page web intermédiaire
+      const fallbackTimer = setTimeout(() => {
         if (document.visibilityState === "visible") {
-          window.location.href = universalUrl;
+          window.location.href = directScheme;
         }
-      }, 600);
+      }, 400);
 
-      const cancelSafety = () => clearTimeout(safetyTimer);
-      window.addEventListener("pagehide", cancelSafety, { once: true });
+      const cancel = () => clearTimeout(fallbackTimer);
+      window.addEventListener("pagehide", cancel, { once: true });
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") cancelSafety();
+        if (document.visibilityState === "hidden") cancel();
       }, { once: true });
 
       return;
     }
 
-    // 4. Navigateurs mobiles génériques
-    window.location.href = universalUrl;
+    // Normal WhatsApp (ou par défaut sur tout smartphone) :
+    // Ouverture instantanée de l'application sans passer par api.whatsapp.com ou wa.me
+    window.location.href = directScheme;
   }
 
   generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null, appType = null) {
