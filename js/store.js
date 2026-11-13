@@ -744,26 +744,20 @@ class Store {
       || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
       || window.innerWidth <= 800;
 
-    const chosenApp = appType || this.getPreferredWhatsAppApp();
-
-    if (isMobile) {
-      if (chosenApp === "business" && /Android/i.test(ua)) {
-        return `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=com.whatsapp.w4b;end;`;
-      }
-      return `whatsapp://send?phone=${phone}&text=${encoded}`;
-    } else {
+    if (!isMobile) {
       return `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
     }
+
+    return `https://wa.me/${phone}?text=${encoded}`;
   }
 
   openWhatsApp(message, appType = null) {
     const settings = this.getSettings();
     const phone = settings.whatsappCleanNumber || "25377078793";
     const encoded = encodeURIComponent(message);
-    const chosenApp = appType || this.getPreferredWhatsAppApp();
+    const targetUrl = `https://wa.me/${phone}?text=${encoded}`;
 
     const ua = navigator.userAgent || "";
-    const isAndroid = /Android/i.test(ua);
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
       || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
       || window.innerWidth <= 800;
@@ -774,37 +768,10 @@ class Store {
       return;
     }
 
-    // 2. Mobile (Android dont Redmi/Samsung, et iPhone) : lancer DIRECTEMENT l'application WhatsApp
-    const directScheme = `whatsapp://send?phone=${phone}&text=${encoded}`;
-
-    if (isAndroid && chosenApp === "business") {
-      const businessIntent = `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=com.whatsapp.w4b;end;`;
-      try {
-        window.location.href = businessIntent;
-      } catch (e) {
-        window.location.href = directScheme;
-      }
-
-      // Si l'intent package est bloqué par Redmi/MIUI ou si WhatsApp Business n'est pas installé,
-      // basculer directement sur l'application WhatsApp via whatsapp:// sans AUCUNE page web intermédiaire
-      const fallbackTimer = setTimeout(() => {
-        if (document.visibilityState === "visible") {
-          window.location.href = directScheme;
-        }
-      }, 400);
-
-      const cancel = () => clearTimeout(fallbackTimer);
-      window.addEventListener("pagehide", cancel, { once: true });
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") cancel();
-      }, { once: true });
-
-      return;
-    }
-
-    // Normal WhatsApp (ou par défaut sur tout smartphone) :
-    // Ouverture instantanée de l'application sans passer par api.whatsapp.com ou wa.me
-    window.location.href = directScheme;
+    // 2. Mobile (Redmi, Samsung, iPhone, etc.) :
+    // Redirection automatique directe vers la discussion WhatsApp du vendeur via wa.me
+    // Sans popup de blocage "Accéder à l'application... Continuer", exactement comme sur les autres appareils
+    window.location.href = targetUrl;
   }
 
   generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null, appType = null) {
