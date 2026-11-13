@@ -1,7 +1,7 @@
 const localtunnel = require('localtunnel');
 const http = require('http');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 8080;
 const PREFERRED_SUBDOMAIN = 'djibshop-' + Math.random().toString(36).substring(2, 7);
 
 async function startTunnel() {

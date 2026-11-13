@@ -12,26 +12,10 @@
 
   <!-- Feuilles de Styles -->
   <link rel="stylesheet" href="css/styles.css?v=3.3">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23111827'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/jpeg" href="img/logo.jpeg">
+  <link rel="apple-touch-icon" href="img/logo.jpeg">
 </head>
 <body>
-
-  <!-- =======================================================================
-       1. BARRE D'ANNONCE SUPÉRIEURE (SOBRE & ÉDITORIALE)
-       ======================================================================= -->
-  <div class="top-announcement-bar">
-    <div class="container announcement-inner">
-      <div class="announcement-item">
-        <span>Livraison rapide à Djibouti-Ville, Balbala, Héron & Haramous — Paiement à la réception</span>
-      </div>
-      <div class="announcement-item">
-        <span>Service Client WhatsApp :</span>
-        <a href="whatsapp://send?phone=25377078793" class="announcement-link">
-          +253 77 07 87 93
-        </a>
-      </div>
-    </div>
-  </div>
 
   <!-- =======================================================================
        2. EN-TÊTE PRINCIPAL (DESIGN BOUTIQUE PROFESSIONNEL)
@@ -40,13 +24,7 @@
     <div class="container header-inner">
       <!-- Logo de la marque -->
       <a href="index.html" class="brand-wrapper" aria-label="Accueil DjibSHOP">
-        <div class="brand-logo-mark">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
-            <path d="M3 6h18"/>
-            <path d="M16 10a4 4 0 0 1-8 0"/>
-          </svg>
-        </div>
+        <img src="img/logo.jpeg" alt="DjibSHOP Logo" class="brand-logo-img">
         <div class="brand-text-block">
           <div class="brand-title">Djib<span>SHOP</span></div>
           <div class="brand-tagline">Boutique Officielle</div>
@@ -478,7 +456,10 @@
     <div class="container">
       <div class="footer-grid">
         <div>
-          <div class="footer-brand-title">Djib<span>SHOP</span></div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <img src="img/logo.jpeg" alt="DjibSHOP Logo" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.2);">
+            <div class="footer-brand-title" style="margin-bottom: 0;">Djib<span>SHOP</span></div>
+          </div>
           <p class="footer-desc">
             Votre boutique e-commerce moderne de vêtements, maillots, chaussures et accessoires à Djibouti. Commande directe par WhatsApp et paiement à la réception.
           </p>

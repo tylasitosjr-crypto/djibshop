@@ -51,7 +51,17 @@ class Store {
 
   cleanProductsList(products) {
     if (!Array.isArray(products)) return [];
-    return products.filter(p => p && p.id && p.id !== "__system_orders_v1__" && p.category !== "__system__" && !this.isLegacyDemoItem(p));
+    return products
+      .filter(p => p && p.id && p.id !== "__system_orders_v1__" && p.category !== "__system__" && !this.isLegacyDemoItem(p))
+      .map(p => {
+        const initMatch = typeof INITIAL_PRODUCTS !== "undefined" ? INITIAL_PRODUCTS.find(ip => ip.id === p.id) : null;
+        if (initMatch && initMatch.images && initMatch.images.length > 0) {
+          if (!p.images || p.images.length === 0 || (p.images[0] && p.images[0].startsWith("data:"))) {
+            return { ...p, images: initMatch.images };
+          }
+        }
+        return p;
+      });
   }
 
   async init() {
@@ -60,19 +70,26 @@ class Store {
       STORAGE_KEYS.LEGACY_PRODUCTS.forEach(key => localStorage.removeItem(key));
     } catch (e) {}
 
-    // 2. Charger le cache v3 propre s'il existe
+    // 2. Charger le cache v3 propre ou initialiser avec le catalogue
     try {
       const cached = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (cached) {
         const parsed = JSON.parse(cached);
         const cleaned = this.cleanProductsList(parsed);
-        this.memoryProducts = cleaned;
         if (cleaned.length > 0) {
+          this.memoryProducts = cleaned;
+          this.isLoadingCatalog = false;
+        } else if (Array.isArray(INITIAL_PRODUCTS) && INITIAL_PRODUCTS.length > 0) {
+          this.saveProducts(INITIAL_PRODUCTS);
           this.isLoadingCatalog = false;
         }
+      } else if (Array.isArray(INITIAL_PRODUCTS) && INITIAL_PRODUCTS.length > 0) {
+        this.saveProducts(INITIAL_PRODUCTS);
+        this.isLoadingCatalog = false;
       }
     } catch (e) {
-      this.memoryProducts = [];
+      this.memoryProducts = Array.isArray(INITIAL_PRODUCTS) ? [...INITIAL_PRODUCTS] : [];
+      this.isLoadingCatalog = false;
     }
 
     // 3. Initialiser les paramètres
@@ -208,18 +225,27 @@ class Store {
 
   // --- CATALOGUE ---
   getProducts() {
-    if (Array.isArray(this.memoryProducts)) {
+    if (Array.isArray(this.memoryProducts) && this.memoryProducts.length > 0) {
       return this.memoryProducts;
     }
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       const parsed = data ? JSON.parse(data) : [];
-      this.memoryProducts = this.cleanProductsList(parsed);
-      return this.memoryProducts;
+      const cleaned = this.cleanProductsList(parsed);
+      if (cleaned.length > 0) {
+        this.memoryProducts = cleaned;
+        return this.memoryProducts;
+      }
     } catch (e) {
       console.error("Erreur lecture catalogue", e);
-      return [];
     }
+
+    if (Array.isArray(INITIAL_PRODUCTS) && INITIAL_PRODUCTS.length > 0) {
+      this.memoryProducts = [...INITIAL_PRODUCTS];
+      return this.memoryProducts;
+    }
+
+    return [];
   }
 
   getProductById(id) {

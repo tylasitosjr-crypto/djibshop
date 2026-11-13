@@ -122,12 +122,7 @@ a {
    ========================================================================== */
 
 .top-announcement-bar {
-  background: var(--blue-950);
-  color: var(--white);
-  font-size: 0.8125rem;
-  padding: 0.45rem 0;
-  font-weight: 500;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: none !important;
 }
 
 .announcement-inner {
@@ -219,6 +214,18 @@ a {
   justify-content: center;
   color: var(--white);
   box-shadow: 0 4px 10px rgba(11, 79, 186, 0.25);
+}
+
+.brand-logo-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+  display: block;
 }
 
 .brand-text-block {
@@ -3368,12 +3375,7 @@ body {
 
 /* 1. Top Announcement Bar — Clean Editorial Charcoal */
 .top-announcement-bar {
-  background: #111827;
-  color: #E5E7EB;
-  border-bottom: 1px solid #1F2937;
-  font-size: 0.75rem;
-  padding: 0.42rem 0;
-  letter-spacing: 0.01em;
+  display: none !important;
 }
 
 .announcement-link {
