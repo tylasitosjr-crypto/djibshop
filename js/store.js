@@ -742,42 +742,100 @@ class Store {
     const ua = navigator.userAgent || "";
     const isAndroid = /Android/i.test(ua);
     const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || window.innerWidth <= 800;
+    const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1) || window.innerWidth <= 800;
 
     const chosenApp = appType || this.getPreferredWhatsAppApp();
+    const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
+    const universalUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
 
     if (isAndroid) {
-      const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
-      return `intent://send?phone=${phone}&text=${encoded}#Intent;scheme=whatsapp;package=${pkg};end;`;
+      if (/MiuiBrowser/i.test(ua)) {
+        return `whatsapp://send?phone=${phone}&text=${encoded}`;
+      }
+      return `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=${pkg};S.browser_fallback_url=${encodeURIComponent(universalUrl)};end;`;
     } else if (isIOS) {
       return `whatsapp://send?phone=${phone}&text=${encoded}`;
     } else if (isMobile) {
-      return `https://wa.me/${phone}?text=${encoded}`;
+      return universalUrl;
     } else {
       return `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
     }
   }
 
   openWhatsApp(message, appType = null) {
-    const targetUrl = this.getWhatsAppUrl(message, appType);
+    const settings = this.getSettings();
+    const phone = settings.whatsappCleanNumber || "25377078793";
+    const encoded = encodeURIComponent(message);
+    const chosenApp = appType || this.getPreferredWhatsAppApp();
+    const pkg = (chosenApp === "business") ? "com.whatsapp.w4b" : "com.whatsapp";
+
     const ua = navigator.userAgent || "";
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isMobile = isAndroid || isIOS || /webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
       || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
       || window.innerWidth <= 800;
 
+    const universalUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`;
+    const directScheme = `whatsapp://send?phone=${phone}&text=${encoded}`;
+    const intentUrl = `intent://send?phone=${phone}&text=${encoded}#Intent;action=android.intent.action.VIEW;scheme=whatsapp;package=${pkg};S.browser_fallback_url=${encodeURIComponent(universalUrl)};end;`;
+
+    // 1. Ordinateur (PC / Mac)
     if (!isMobile) {
-      window.open(targetUrl, "_blank");
+      window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`, "_blank");
       return;
     }
 
-    const link = document.createElement("a");
-    link.href = targetUrl;
-    link.target = "_self";
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      if (link.parentNode) link.parentNode.removeChild(link);
-    }, 150);
+    // 2. iOS (iPhone / iPad)
+    if (isIOS) {
+      window.location.href = directScheme;
+      setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          window.location.href = universalUrl;
+        }
+      }, 500);
+      return;
+    }
+
+    // 3. Android (Redmi / Xiaomi, Samsung, Pixel, etc.)
+    if (isAndroid) {
+      // Détecter Mi Browser natif sur Xiaomi/Redmi
+      if (/MiuiBrowser/i.test(ua)) {
+        window.location.href = directScheme;
+        setTimeout(() => {
+          if (document.visibilityState === "visible") {
+            window.location.href = universalUrl;
+          }
+        }, 500);
+        return;
+      }
+
+      // Chrome / Opera / Brave / etc. sur Android
+      try {
+        window.location.href = intentUrl;
+      } catch (e) {
+        window.location.href = universalUrl;
+      }
+
+      // Filet de sécurité anti-blocage spécifique MIUI / HyperOS (Redmi) :
+      // Si MIUI bloque silencieusement le package en tâche de fond, basculer instantanément sur l'URL universelle
+      const safetyTimer = setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          window.location.href = universalUrl;
+        }
+      }, 600);
+
+      const cancelSafety = () => clearTimeout(safetyTimer);
+      window.addEventListener("pagehide", cancelSafety, { once: true });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") cancelSafety();
+      }, { once: true });
+
+      return;
+    }
+
+    // 4. Navigateurs mobiles génériques
+    window.location.href = universalUrl;
   }
 
   generateDirectWhatsAppLink(product, size = null, quantity = 1, customPrice = null, appType = null) {
