@@ -3,8 +3,8 @@
  */
 
 const STORAGE_KEYS = {
-  PRODUCTS: "djibshop_catalog_v3",
-  LEGACY_PRODUCTS: ["djibshop_catalog_v2", "djibshop_catalog_v1", "djibshop_products"],
+  PRODUCTS: "djibshop_catalog_v4",
+  LEGACY_PRODUCTS: ["djibshop_catalog_v3", "djibshop_catalog_v2", "djibshop_catalog_v1", "djibshop_products"],
   CART: "djibshop_cart_v3",
   LEGACY_CARTS: ["djibshop_cart_v2"],
   ORDERS: "djibshop_orders_v3",
