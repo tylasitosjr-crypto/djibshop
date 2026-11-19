@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0B4FBA">
 
   <!-- Feuilles de Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=3.8">
+  <link rel="stylesheet" href="css/styles.css?v=3.9">
   <link rel="icon" type="image/jpeg" href="img/logo.jpeg">
   <link rel="apple-touch-icon" href="img/logo.jpeg">
   <style>
@@ -378,10 +378,20 @@
       <div id="admin-panel-orders" class="admin-panel-card" style="display: none;">
         <div class="panel-card-header" style="flex-wrap: wrap; gap: 0.75rem;">
           <div>
-            <h2 class="panel-title">Suivi des Commandes & Livraisons</h2>
-            <p class="panel-subtitle">Gérez l'état d'avancement des commandes (En cours de collecte, Expédié, En cours de livraison, Livré).</p>
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.25rem;">
+              <h2 class="panel-title" style="margin-bottom: 0;">Suivi des Commandes & Livraisons</h2>
+              <div id="admin-orders-sync-status" class="live-sync-badge">
+                <span class="live-dot pulse"></span>
+                <span class="live-sync-text">Synchronisé en direct</span>
+              </div>
+            </div>
+            <p class="panel-subtitle">Validez les commandes reçues via WhatsApp, confirmez ou rejetez avec mise à jour automatique du stock, et suivez la livraison.</p>
           </div>
-          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="action-btn action-btn-secondary" id="btn-refresh-orders" style="padding: 0.5rem 0.9rem; font-size: 0.8rem; gap: 0.4rem;">
+              <svg id="refresh-orders-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Actualiser</span>
+            </button>
             <button type="button" class="action-btn action-btn-cart" id="btn-toggle-new-order-form" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
               + Enregistrer une commande
             </button>
@@ -421,11 +431,13 @@
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label" style="font-size: 0.75rem;">Statut initial</label>
               <select id="manual-ord-status" class="form-select">
-                <option value="Commande confirmée">Commande confirmée</option>
-                <option value="En cours de collecte" selected>En cours de collecte</option>
+                <option value="En attente d'approbation">En attente d'approbation</option>
+                <option value="Commande confirmée" selected>Commande confirmée</option>
+                <option value="En cours de collecte">En cours de collecte</option>
                 <option value="Expédié">Expédié</option>
                 <option value="En cours de livraison">En cours de livraison</option>
                 <option value="Livré">Livré</option>
+                <option value="Rejeté / Annulé">Rejeté / Annulé</option>
               </select>
             </div>
           </div>
@@ -438,12 +450,13 @@
         <!-- Filtres de statut type Shein -->
         <div class="shein-status-filters" id="admin-orders-status-filters" style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem;">
           <button type="button" class="shein-filter-pill active" data-status="all">Toutes</button>
+          <button type="button" class="shein-filter-pill" data-status="En attente d'approbation" style="border-color: #F59E0B; color: #B45309; font-weight: 700;">⏳ En attente</button>
           <button type="button" class="shein-filter-pill" data-status="Commande confirmée">Commande confirmée</button>
           <button type="button" class="shein-filter-pill" data-status="En cours de collecte">En cours de collecte</button>
           <button type="button" class="shein-filter-pill" data-status="Expédié">Expédié</button>
           <button type="button" class="shein-filter-pill" data-status="En cours de livraison">En cours de livraison</button>
           <button type="button" class="shein-filter-pill" data-status="Livré">Livré</button>
-          <button type="button" class="shein-filter-pill" data-status="Annulé">Annulé</button>
+          <button type="button" class="shein-filter-pill" data-status="Rejeté / Annulé">Rejeté / Annulé</button>
         </div>
 
         <div class="admin-table-container">
@@ -455,7 +468,7 @@
                 <th>Articles Commandés</th>
                 <th>Montant</th>
                 <th>Progression & Statut de Livraison</th>
-                <th style="text-align: right;">Actions</th>
+                <th style="text-align: right;">Décision / Actions</th>
               </tr>
             </thead>
             <tbody id="admin-orders-table-body">
@@ -561,9 +574,9 @@
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Scripts JavaScript DjibSHOP -->
-  <script src="js/data.js?v=3.8"></script>
-  <script src="js/supabase.js?v=3.8"></script>
-  <script src="js/store.js?v=3.8"></script>
-  <script src="js/admin.js?v=3.8"></script>
+  <script src="js/data.js?v=3.9"></script>
+  <script src="js/supabase.js?v=3.9"></script>
+  <script src="js/store.js?v=3.9"></script>
+  <script src="js/admin.js?v=3.9"></script>
 </body>
 </html>

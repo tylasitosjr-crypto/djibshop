@@ -689,17 +689,22 @@ class ClientApp {
     });
 
     const quickWaBtn = card.querySelector(".btn-quick-wa");
-    quickWaBtn.addEventListener("click", (e) => {
+    quickWaBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const hasSizes = product.sizes && typeof product.sizes === "object" && Object.keys(product.sizes).length > 0;
       if (!hasSizes) {
-        store.createOrder(
+        const savePromise = store.createOrder(
           { name: "Client WhatsApp", district: "Djibouti", phone: "WhatsApp Direct" },
           [{ id: product.id, ref: product.ref, title: product.title, size: null, quantity: 1, price: product.price }],
           product.price,
-          "En cours de collecte"
+          "En attente d'approbation"
         );
+        await Promise.race([
+          savePromise,
+          new Promise(res => setTimeout(res, 450))
+        ]);
         const message = store.buildDirectOrderMessage(product, null, 1, product.price);
+        this.renderProducts();
         store.openWhatsApp(message);
       } else {
         this.openProductModal(product);
@@ -941,7 +946,7 @@ class ClientApp {
     }
   }
 
-  orderCurrentModalViaWhatsApp() {
+  async orderCurrentModalViaWhatsApp() {
     if (!this.activeProductModal) return;
 
     const hasSizes = this.activeProductModal.sizes && Object.keys(this.activeProductModal.sizes).length > 0;
@@ -960,8 +965,8 @@ class ClientApp {
     const unitPrice = this.selectedModalPrice || this.activeProductModal.price;
     const qty = this.modalQuantity || 1;
 
-    // Enregistrer la commande dans le tableau de bord Admin avec statut type Shein ("En cours de collecte")
-    store.createOrder(
+    // Enregistrer la commande & déduire le stock immédiatement dans le magasin et Supabase Cloud
+    const savePromise = store.createOrder(
       { name: "Client WhatsApp", district: "Djibouti", phone: "WhatsApp Direct" },
       [{
         id: this.activeProductModal.id,
@@ -972,8 +977,13 @@ class ClientApp {
         price: unitPrice
       }],
       unitPrice * qty,
-      "En cours de collecte"
+      "En attente d'approbation"
     );
+
+    await Promise.race([
+      savePromise,
+      new Promise(res => setTimeout(res, 450))
+    ]);
 
     const message = store.buildDirectOrderMessage(
       this.activeProductModal, 
@@ -982,6 +992,9 @@ class ClientApp {
       unitPrice
     );
     const pref = store.getPreferredWhatsAppApp();
+
+    this.closeProductModal();
+    this.renderProducts();
     store.openWhatsApp(message, pref);
   }
 
@@ -1202,7 +1215,7 @@ class ClientApp {
     });
   }
 
-  checkoutCartViaWhatsApp() {
+  async checkoutCartViaWhatsApp() {
     const cart = store.getCart();
     if (cart.length === 0) {
       window.showToast("Votre panier est vide", "warning");
@@ -1216,15 +1229,20 @@ class ClientApp {
     const customerInfo = { name, district, phone };
     const total = store.getCartTotal();
 
-    store.createOrder(customerInfo, cart, total);
+    const savePromise = store.createOrder(customerInfo, cart, total, "En attente d'approbation");
+    await Promise.race([
+      savePromise,
+      new Promise(res => setTimeout(res, 450))
+    ]);
 
     const message = store.buildCartOrderMessage(customerInfo, cart, total);
     const pref = store.getPreferredWhatsAppApp();
-    store.openWhatsApp(message, pref);
 
     store.clearCart();
     this.closeCartDrawer();
+    this.renderProducts();
     window.showToast("Commande transmise vers WhatsApp avec succès !", "success");
+    store.openWhatsApp(message, pref);
   }
 }
 

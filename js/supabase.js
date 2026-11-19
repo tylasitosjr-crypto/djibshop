@@ -113,8 +113,7 @@ class SupabaseService {
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const timestamp = Date.now();
-        const endpoint = `${this.url}/rest/v1/products?select=*&order=created_at.desc&_t=${timestamp}`;
+        const endpoint = `${this.url}/rest/v1/products?select=*&order=created_at.desc`;
         const response = await fetch(endpoint, {
           method: "GET",
           headers: this.getRestHeaders(),
@@ -168,11 +167,47 @@ class SupabaseService {
           "Prefer": "resolution=merge-duplicates"
         }),
         body: JSON.stringify(payload),
-        cache: "no-store"
+        cache: "no-store",
+        keepalive: true
       });
       return response.ok;
     } catch (e) {
       console.warn("Erreur sauvegarde commandes cloud:", e);
+      return false;
+    }
+  }
+
+  async pushOrderToCloud(newOrder) {
+    if (!this.isConfigured || !newOrder) return false;
+    try {
+      // 1. Récupérer les commandes actuelles depuis Supabase
+      const timestamp = Date.now();
+      const endpoint = `${this.url}/rest/v1/products?id=eq.${SYSTEM_ORDERS_ROW_ID}&_t=${timestamp}`;
+      let existingOrders = [];
+      try {
+        const response = await fetch(endpoint, {
+          method: "GET",
+          headers: this.getRestHeaders(),
+          cache: "no-store"
+        });
+        if (response.ok) {
+          const rows = await response.json();
+          if (Array.isArray(rows) && rows.length > 0 && rows[0].sizes && Array.isArray(rows[0].sizes.orders)) {
+            existingOrders = rows[0].sizes.orders;
+          }
+        }
+      } catch (err) {}
+
+      // 2. Fusionner la nouvelle commande en tête (éviter doublon d'ID)
+      const mergedOrders = [
+        newOrder,
+        ...existingOrders.filter(o => o && o.id !== newOrder.id && o.id !== "CMD-2026-0089")
+      ];
+
+      // 3. Sauvegarder dans Supabase Cloud avec keepalive: true pour ne jamais être avorté
+      return await this.saveOrdersToCloud(mergedOrders);
+    } catch (e) {
+      console.warn("Erreur pushOrderToCloud:", e);
       return false;
     }
   }
@@ -187,7 +222,8 @@ class SupabaseService {
           "Prefer": "resolution=merge-duplicates,return=representation"
         }),
         body: JSON.stringify(payload),
-        cache: "no-store"
+        cache: "no-store",
+        keepalive: true
       });
       if (!response.ok) {
         const errText = await response.text();

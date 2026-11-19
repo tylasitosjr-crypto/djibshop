@@ -20,6 +20,14 @@ class AdminApp {
     this.initElements();
     this.bindEvents();
     this.checkSession();
+
+    // Auto-polling périodique toutes les 8s pour actualiser les commandes et stocks en direct
+    setInterval(async () => {
+      if (store.isAdminAuthenticated() && this.activeTab === "orders") {
+        await store.syncFromSupabase();
+        this.updateLiveSyncTime();
+      }
+    }, 8000);
   }
 
   initElements() {
@@ -250,6 +258,18 @@ class AdminApp {
       });
     }
 
+    // Bouton d'actualisation manuelle immédiate des commandes et stocks
+    document.getElementById("btn-refresh-orders")?.addEventListener("click", async () => {
+      const icon = document.getElementById("refresh-orders-icon");
+      if (icon) icon.classList.add("spin-anim");
+      await store.syncFromSupabase();
+      this.renderAdminOrdersTable();
+      this.updateStats();
+      this.updateLiveSyncTime();
+      if (icon) setTimeout(() => icon.classList.remove("spin-anim"), 600);
+      this.showAdminToast("Commandes et stocks synchronisés avec succès !", "success");
+    });
+
     // Mise à jour automatique dès que Supabase synchronise les articles ou commandes
     window.addEventListener("catalog-synced", () => {
       if (store.isAdminAuthenticated()) {
@@ -262,6 +282,7 @@ class AdminApp {
       if (store.isAdminAuthenticated()) {
         this.renderAdminOrdersTable();
         this.updateStats();
+        this.updateLiveSyncTime();
       }
     });
   }
@@ -331,6 +352,33 @@ class AdminApp {
     this.renderAdminOrdersTable();
     this.renderDynamicSizeInputs(this.categorySelect ? this.categorySelect.value : "vetements");
     this.loadSupabaseForm();
+    this.updateLiveSyncTime();
+  }
+
+  updateLiveSyncTime() {
+    const el = document.querySelector("#admin-orders-sync-status .live-sync-text");
+    if (el) {
+      const timeStr = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      el.textContent = `En direct (${timeStr})`;
+    }
+  }
+
+  showAdminToast(message, type = "success") {
+    let container = document.getElementById("admin-toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "admin-toast-container";
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement("div");
+    toast.className = `admin-toast ${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(12px)";
+      setTimeout(() => toast.remove(), 350);
+    }, 3500);
   }
 
   switchTab(tabName) {
@@ -951,15 +999,37 @@ class AdminApp {
     if (filterContainer) {
       filterContainer.querySelectorAll(".shein-filter-pill").forEach(pill => {
         const st = pill.dataset.status;
-        const count = st === "all" ? allOrders.length : allOrders.filter(o => o.status === st).length;
-        const baseLabel = st === "all" ? "Toutes" : st;
+        let count = 0;
+        if (st === "all") {
+          count = allOrders.length;
+        } else if (st === "En attente d'approbation") {
+          count = allOrders.filter(o => store.normalizeOrderStatus(o.status) === "En attente d'approbation").length;
+        } else if (st === "Rejeté / Annulé" || st === "Annulé") {
+          count = allOrders.filter(o => store.normalizeOrderStatus(o.status) === "Rejeté / Annulé" || o.status === "Annulé").length;
+        } else {
+          count = allOrders.filter(o => o.status === st).length;
+        }
+
+        let baseLabel = "Toutes";
+        if (st === "En attente d'approbation") baseLabel = "⏳ En attente";
+        else if (st === "Rejeté / Annulé") baseLabel = "Rejeté / Annulé";
+        else if (st !== "all") baseLabel = st;
+
         pill.textContent = count > 0 ? `${baseLabel} (${count})` : baseLabel;
       });
     }
 
     const filteredOrders = this.selectedOrderStatusFilter === "all"
       ? allOrders
-      : allOrders.filter(o => o.status === this.selectedOrderStatusFilter);
+      : allOrders.filter(o => {
+          if (this.selectedOrderStatusFilter === "En attente d'approbation") {
+            return store.normalizeOrderStatus(o.status) === "En attente d'approbation";
+          }
+          if (this.selectedOrderStatusFilter === "Rejeté / Annulé" || this.selectedOrderStatusFilter === "Annulé") {
+            return store.normalizeOrderStatus(o.status) === "Rejeté / Annulé" || o.status === "Annulé";
+          }
+          return o.status === this.selectedOrderStatusFilter;
+        });
 
     this.adminOrdersTableBody.innerHTML = "";
 
@@ -986,13 +1056,73 @@ class AdminApp {
       const tr = document.createElement("tr");
       const itemsList = (ord.items || []).map(it => `<strong>${it.quantity}x</strong> ${it.title} ${it.size ? `<span style="color:var(--slate-500);">(${it.size})</span>` : ""}`).join("<br>");
 
-      const statusMeta = statuses.find(s => s.label === ord.status) || statuses[1];
-      const currentStepIdx = stepOrder.indexOf(ord.status);
-      const isCancelled = ord.status === "Annulé";
+      const normStatus = store.normalizeOrderStatus(ord.status);
+      const isPending = normStatus === "En attente d'approbation";
+      const isCancelled = normStatus === "Rejeté / Annulé" || ord.status === "Annulé";
 
-      const stepsHtml = isCancelled
-        ? `<div style="font-size: 0.72rem; font-weight: 700; color: #DC2626; margin-top: 6px;">Commande annulée</div>`
-        : `<div class="shein-progress-track">
+      let statusTdHtml = "";
+      let actionsTdHtml = "";
+
+      if (isPending) {
+        statusTdHtml = `
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="shein-status-badge" style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; font-weight: 700;">
+                ⏳ En attente d'approbation
+              </span>
+            </div>
+            <div style="font-size: 0.72rem; color: #B45309; font-weight: 600;">
+              Commande WhatsApp reçue • Stock réservé
+            </div>
+          </div>
+        `;
+        actionsTdHtml = `
+          <div class="admin-decision-action-box">
+            <div class="decision-prompt-txt">
+              <span class="pulse-dot-amber"></span>
+              Décision requise :
+            </div>
+            <div class="decision-btn-group">
+              <button type="button" class="btn-approve-ord" data-id="${ord.id}" title="Valider l'achat et confirmer la commande">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Valider l'achat
+              </button>
+              <button type="button" class="btn-reject-ord" data-id="${ord.id}" title="Rejeter et restaurer immédiatement le stock">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Rejeter
+              </button>
+            </div>
+          </div>
+        `;
+      } else if (isCancelled) {
+        statusTdHtml = `
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="shein-status-badge" style="background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; font-weight: 700;">
+                ✕ Rejeté / Annulé
+              </span>
+            </div>
+            <div style="font-size: 0.72rem; color: #DC2626; font-weight: 600;">
+              Stock restitué au catalogue (+1)
+            </div>
+          </div>
+        `;
+        actionsTdHtml = `
+          <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-reactivate-ord" data-id="${ord.id}" title="Réactiver la commande et déduire à nouveau le stock">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Réactiver
+            </button>
+            <button type="button" class="action-btn action-btn-secondary btn-del-ord" data-id="${ord.id}" style="padding: 4px 8px; font-size: 0.72rem; color: var(--danger-crimson);">
+              Supprimer
+            </button>
+          </div>
+        `;
+      } else {
+        const currentStepIdx = stepOrder.indexOf(ord.status);
+        const statusMeta = statuses.find(s => s.label === ord.status) || statuses[1];
+        const stepsHtml = `
+          <div class="shein-progress-track">
             ${stepOrder.map((stLabel, idx) => {
               const done = currentStepIdx >= idx;
               const current = currentStepIdx === idx;
@@ -1004,11 +1134,36 @@ class AdminApp {
                 </div>
               `;
             }).join("")}
-          </div>`;
+          </div>
+        `;
 
-      const optionsHtml = statuses.map(s =>
-        `<option value="${s.label}" ${s.label === ord.status ? "selected" : ""}>${s.label}</option>`
-      ).join("");
+        const optionsHtml = stepOrder.map(st =>
+          `<option value="${st}" ${st === ord.status ? "selected" : ""}>${st}</option>`
+        ).join("");
+
+        statusTdHtml = `
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="shein-status-badge" style="background: ${statusMeta.bg}; color: ${statusMeta.color};">
+              ${ord.status}
+            </span>
+            <select class="shein-status-select" data-order-id="${ord.id}" aria-label="Changer le statut">
+              ${optionsHtml}
+            </select>
+          </div>
+          ${stepsHtml}
+        `;
+
+        actionsTdHtml = `
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <button type="button" class="btn-cancel-ord-link" data-id="${ord.id}" title="Annuler cette commande et réinjecter le stock">
+              Annuler & rendre stock
+            </button>
+            <button type="button" class="action-btn action-btn-secondary btn-del-ord" data-id="${ord.id}" style="padding: 3px 6px; font-size: 0.72rem; color: var(--slate-400);">
+              Supprimer
+            </button>
+          </div>
+        `;
+      }
 
       tr.innerHTML = `
         <td>
@@ -1022,32 +1177,71 @@ class AdminApp {
         <td style="font-size: 0.8125rem; line-height: 1.45;">${itemsList}</td>
         <td style="font-weight: 800; color: var(--slate-900); white-space: nowrap;">${store.formatPrice(ord.total)}</td>
         <td style="min-width: 250px;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <span class="shein-status-badge" style="background: ${statusMeta.bg}; color: ${statusMeta.color};">
-              ${ord.status}
-            </span>
-            <select class="shein-status-select" data-order-id="${ord.id}" aria-label="Changer le statut">
-              ${optionsHtml}
-            </select>
-          </div>
-          ${stepsHtml}
+          ${statusTdHtml}
         </td>
         <td style="text-align: right; white-space: nowrap;">
-          <button type="button" class="action-btn action-btn-secondary btn-del-ord" data-id="${ord.id}" style="padding: 4px 8px; font-size: 0.75rem; color: var(--danger-crimson);">Supprimer</button>
+          ${actionsTdHtml}
         </td>
       `;
 
-      const statusSelect = tr.querySelector(".shein-status-select");
-      statusSelect?.addEventListener("change", async (e) => {
+      // Handlers
+      tr.querySelector(".btn-approve-ord")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = "Validation...";
+        await store.updateOrderStatus(ord.id, "Commande confirmée");
+        this.showAdminToast(`✓ Commande #${ord.id.slice(-6)} approuvée et confirmée !`, "success");
+        this.renderAdminOrdersTable();
+        this.updateStats();
+      });
+
+      tr.querySelector(".btn-reject-ord")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = "Rejet...";
+        await store.updateOrderStatus(ord.id, "Rejeté / Annulé");
+        this.showAdminToast(`✕ Commande #${ord.id.slice(-6)} rejetée. Stock automatiquement restitué (+1) !`, "warning");
+        this.renderAdminOrdersTable();
+        this.updateStats();
+        this.renderAdminProductsTable();
+      });
+
+      tr.querySelector(".btn-reactivate-ord")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        await store.updateOrderStatus(ord.id, "Commande confirmée");
+        this.showAdminToast(`✓ Commande #${ord.id.slice(-6)} réactivée. Stock déduit (-1) !`, "success");
+        this.renderAdminOrdersTable();
+        this.updateStats();
+        this.renderAdminProductsTable();
+      });
+
+      tr.querySelector(".btn-cancel-ord-link")?.addEventListener("click", async () => {
+        if (confirm(`Annuler la commande #${ord.id.slice(-6)} ? Le stock sera automatiquement remis dans le catalogue.`)) {
+          await store.updateOrderStatus(ord.id, "Rejeté / Annulé");
+          this.showAdminToast(`Commande #${ord.id.slice(-6)} annulée. Stock restitué (+1).`, "warning");
+          this.renderAdminOrdersTable();
+          this.updateStats();
+          this.renderAdminProductsTable();
+        }
+      });
+
+      tr.querySelector(".shein-status-select")?.addEventListener("change", async (e) => {
         const newStatus = e.target.value;
         await store.updateOrderStatus(ord.id, newStatus);
+        this.showAdminToast(`Statut mis à jour : ${newStatus}`, "success");
         this.renderAdminOrdersTable();
+        this.updateStats();
       });
 
       tr.querySelector(".btn-del-ord")?.addEventListener("click", async () => {
-        await store.deleteOrder(ord.id);
-        this.renderAdminOrdersTable();
-        this.updateStats();
+        if (confirm(`Supprimer définitivement la commande #${ord.id.slice(-6)} ?`)) {
+          await store.deleteOrder(ord.id);
+          this.showAdminToast(`Commande supprimée`, "error");
+          this.renderAdminOrdersTable();
+          this.updateStats();
+          this.renderAdminProductsTable();
+        }
       });
 
       this.adminOrdersTableBody.appendChild(tr);

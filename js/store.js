@@ -25,12 +25,13 @@ const DEFAULT_SETTINGS = {
 };
 
 const SHEIN_ORDER_STATUSES = [
-  { key: "confirmee", label: "Commande confirmée", step: 1, color: "#0B4FBA", bg: "#EFF6FF" },
-  { key: "collecte", label: "En cours de collecte", step: 2, color: "#D97706", bg: "#FEF3C7" },
+  { key: "attente", label: "En attente d'approbation", step: 0, color: "#D97706", bg: "#FEF3C7" },
+  { key: "confirmee", label: "Commande confirmée", step: 1, color: "#059669", bg: "#D1FAE5" },
+  { key: "collecte", label: "En cours de collecte", step: 2, color: "#0B4FBA", bg: "#EFF6FF" },
   { key: "expedie", label: "Expédié", step: 3, color: "#7C3AED", bg: "#F3E8FF" },
   { key: "livraison", label: "En cours de livraison", step: 4, color: "#0284C7", bg: "#E0F2FE" },
-  { key: "livre", label: "Livré", step: 5, color: "#059669", bg: "#D1FAE5" },
-  { key: "annule", label: "Annulé", step: 0, color: "#DC2626", bg: "#FEE2E2" }
+  { key: "livre", label: "Livré", step: 5, color: "#10B981", bg: "#ECFDF5" },
+  { key: "annule", label: "Rejeté / Annulé", step: -1, color: "#DC2626", bg: "#FEE2E2" }
 ];
 
 class Store {
@@ -155,12 +156,12 @@ class Store {
       this.syncFromSupabase();
     });
 
-    // Rafraîchissement périodique discret toutes les 45 secondes
+    // Rafraîchissement périodique discret toutes les 12 secondes
     setInterval(() => {
       if (document.visibilityState === "visible") {
         this.syncFromSupabase();
       }
-    }, 45000);
+    }, 12000);
   }
 
   async syncFromSupabase() {
@@ -513,15 +514,16 @@ class Store {
   }
 
   normalizeOrderStatus(rawStatus) {
-    if (!rawStatus) return "En cours de collecte";
+    if (!rawStatus) return "En attente d'approbation";
     const s = String(rawStatus).trim().toLowerCase();
-    if (s.includes("confirm")) return "Commande confirmée";
-    if (s.includes("collect") || s.includes("attente") || s.includes("prépar")) return "En cours de collecte";
+    if (s.includes("rejet") || s.includes("annul") || s.includes("dismiss")) return "Rejeté / Annulé";
+    if (s.includes("attente") || s.includes("nouveau") || s.includes("pending")) return "En attente d'approbation";
+    if (s.includes("confirm") || s.includes("approuv") || s.includes("valid") || s.includes("payé")) return "Commande confirmée";
+    if (s.includes("collect") || s.includes("prépar")) return "En cours de collecte";
     if (s.includes("expéd")) return "Expédié";
     if (s.includes("livraison") || s.includes("route")) return "En cours de livraison";
     if (s.includes("livr")) return "Livré";
-    if (s.includes("annul")) return "Annulé";
-    return "En cours de collecte";
+    return "En attente d'approbation";
   }
 
   getOrders() {
@@ -533,7 +535,8 @@ class Store {
         .filter(o => o && o.id !== "CMD-2026-0089")
         .map(o => ({
           ...o,
-          status: this.normalizeOrderStatus(o.status)
+          status: this.normalizeOrderStatus(o.status),
+          stockDeducted: o.stockDeducted !== false
         }));
     } catch {
       return [];
@@ -557,12 +560,19 @@ class Store {
   }
 
   async deleteOrder(orderId) {
-    const orders = this.getOrders().filter(o => o.id !== orderId);
+    const orders = this.getOrders();
+    const target = orders.find(o => o.id === orderId);
+    if (target && target.stockDeducted !== false) {
+      // Restituer le stock avant suppression si la commande n'était pas déjà rejetée
+      await this.adjustStockForOrder(target, +1);
+    }
+
+    const remaining = orders.filter(o => o.id !== orderId);
     try {
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(remaining));
     } catch (e) {}
-    await this.syncOrdersToCloud(orders);
-    return orders;
+    await this.syncOrdersToCloud(remaining);
+    return remaining;
   }
 
   async updateOrderStatus(orderId, newStatus) {
@@ -570,12 +580,27 @@ class Store {
     const idx = orders.findIndex(o => o.id === orderId);
     if (idx === -1) return null;
 
+    const oldStatus = orders[idx].status;
     const cleanStatus = this.normalizeOrderStatus(newStatus);
+    const isNowCancelled = (cleanStatus === "Rejeté / Annulé");
+    const wasCancelled = (oldStatus === "Rejeté / Annulé");
+
     orders[idx] = {
       ...orders[idx],
       status: cleanStatus,
       updatedAt: new Date().toISOString().replace("T", " ").substring(0, 16)
     };
+
+    // Si la commande est rejetée/annulée et que son stock était déduit, RESTAURER LE STOCK (+1) !
+    if (isNowCancelled && orders[idx].stockDeducted !== false) {
+      await this.adjustStockForOrder(orders[idx], +1);
+      orders[idx].stockDeducted = false;
+    }
+    // Si une commande précédemment rejetée est réactivée/approuvée, RE-DÉDUIRE LE STOCK (-1) !
+    else if (!isNowCancelled && wasCancelled && orders[idx].stockDeducted === false) {
+      await this.adjustStockForOrder(orders[idx], -1);
+      orders[idx].stockDeducted = true;
+    }
 
     try {
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
@@ -585,7 +610,7 @@ class Store {
     return orders[idx];
   }
 
-  createOrder(customerInfo, cartItems, totalAmount, initialStatus = "En cours de collecte") {
+  async createOrder(customerInfo, cartItems, totalAmount, initialStatus = "En attente d'approbation") {
     const orders = this.getOrders();
     const nowStr = new Date().toISOString().replace("T", " ").substring(0, 16);
     const newOrder = {
@@ -595,16 +620,17 @@ class Store {
       customerName: (customerInfo && customerInfo.name) ? customerInfo.name : "Client WhatsApp",
       customerPhone: (customerInfo && customerInfo.phone) ? customerInfo.phone : "WhatsApp Direct",
       district: (customerInfo && customerInfo.district) ? customerInfo.district : "Djibouti",
-      items: cartItems.map(item => ({
+      items: (cartItems || []).map(item => ({
         id: item.id,
         ref: item.ref || "",
         title: item.title,
         size: item.size || null,
-        quantity: item.quantity || 1,
+        quantity: parseInt(item.quantity) || 1,
         price: item.price
       })),
       total: totalAmount,
-      status: this.normalizeOrderStatus(initialStatus)
+      status: this.normalizeOrderStatus(initialStatus),
+      stockDeducted: true
     };
 
     orders.unshift(newOrder);
@@ -612,40 +638,63 @@ class Store {
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
     } catch (e) {}
 
-    this.decrementStockFromOrder(newOrder);
-    this.syncOrdersToCloud(orders);
+    // 1. Décrémenter le stock localement & dans Supabase Cloud
+    await this.adjustStockForOrder(newOrder, -1);
+
+    // 2. Synchroniser la nouvelle commande dans Supabase Cloud
+    if (window.supabaseService && window.supabaseService.isConfigured) {
+      await window.supabaseService.pushOrderToCloud(newOrder);
+    }
+
+    window.dispatchEvent(new CustomEvent("orders-synced", { detail: { orders } }));
     return newOrder;
   }
 
-  decrementStockFromOrder(order) {
+  async adjustStockForOrder(order, direction = -1) {
+    if (!order || !Array.isArray(order.items)) return [];
     const products = [...this.getProducts()];
     const updatedProds = [];
 
     order.items.forEach(item => {
-      const prod = products.find(p => (item.id && p.id === item.id) || p.title === item.title);
-      if (prod) {
-        if (item.size && prod.sizes && prod.sizes[item.size] !== undefined) {
-          if (typeof prod.sizes[item.size] === "object") {
-            prod.sizes[item.size].stock = Math.max(0, prod.sizes[item.size].stock - item.quantity);
-          } else {
-            prod.sizes[item.size] = Math.max(0, prod.sizes[item.size] - item.quantity);
-          }
-          prod.totalStock = Object.values(prod.sizes).reduce((sum, s) => {
-            const qty = typeof s === "object" ? s.stock : s;
-            return sum + (parseInt(qty) || 0);
-          }, 0);
+      const prod = products.find(p => (item.id && p.id === item.id) || (item.ref && p.ref === item.ref) || p.title === item.title);
+      if (!prod) return;
+
+      let changed = false;
+      const qtyChange = (parseInt(item.quantity) || 1) * direction; // -1 = déduire, +1 = réintégrer
+
+      if (item.size && prod.sizes && typeof prod.sizes === "object" && prod.sizes[item.size] !== undefined) {
+        if (typeof prod.sizes[item.size] === "object") {
+          const currentStock = parseInt(prod.sizes[item.size].stock) || 0;
+          prod.sizes[item.size].stock = Math.max(0, currentStock + qtyChange);
         } else {
-          prod.totalStock = Math.max(0, prod.totalStock - item.quantity);
+          const currentStock = parseInt(prod.sizes[item.size]) || 0;
+          prod.sizes[item.size] = Math.max(0, currentStock + qtyChange);
         }
+        prod.totalStock = Object.values(prod.sizes).reduce((sum, s) => {
+          const q = typeof s === "object" ? s.stock : s;
+          return sum + (parseInt(q) || 0);
+        }, 0);
+        changed = true;
+      } else {
+        const currentStock = parseInt(prod.totalStock) || 0;
+        prod.totalStock = Math.max(0, currentStock + qtyChange);
+        changed = true;
+      }
+
+      if (changed && !updatedProds.some(up => up.id === prod.id)) {
         updatedProds.push(prod);
       }
     });
 
-    this.saveProducts(products);
-
-    if (window.supabaseService && window.supabaseService.isConfigured && updatedProds.length > 0) {
-      updatedProds.forEach(p => window.supabaseService.saveProduct(p));
+    if (updatedProds.length > 0) {
+      this.saveProducts(products);
+      if (window.supabaseService && window.supabaseService.isConfigured) {
+        await Promise.all(updatedProds.map(p => window.supabaseService.saveProduct(p)));
+      }
+      window.dispatchEvent(new CustomEvent("catalog-synced", { detail: { products } }));
     }
+
+    return updatedProds;
   }
 
   // --- AUTHENTIFICATION ADMIN ---
@@ -783,3 +832,4 @@ class Store {
 
 // Instance globale
 const store = new Store();
+window.store = store;
